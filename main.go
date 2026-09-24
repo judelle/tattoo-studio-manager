@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -38,6 +39,7 @@ func main() {
 		fmt.Println("2 — Показать клиентов")
 		fmt.Println("3 — Найти клиента по ID")
 		fmt.Println("4 — Изменить клиента")
+		fmt.Println("5 — Удалить клиента")
 		fmt.Println("0 — Выход")
 		fmt.Print("Выберите действие: ")
 
@@ -54,6 +56,8 @@ func main() {
 			findClient(scanner, clients)
 		case "4":
 			changeClient(scanner, clients)
+		case "5":
+			clients = deleteClientChoice(scanner, clients)
 		case "0":
 			return
 		default:
@@ -166,7 +170,7 @@ func findClient(scanner *bufio.Scanner, clients []Client) {
 }
 
 func changeClient(scanner *bufio.Scanner, clients []Client) {
-	fmt.Print("Введите ID клиента: ")
+	fmt.Print("Введите ID клиента для изменения: ")
 	scanner.Scan()
 
 	input := strings.TrimSpace(scanner.Text())
@@ -231,4 +235,56 @@ func changeClient(scanner *bufio.Scanner, clients []Client) {
 		}
 	}
 
+}
+
+func deleteClientChoice(scanner *bufio.Scanner, clients []Client) []Client {
+	for {
+		fmt.Print("Введите ID клиента для удаления: ")
+		scanner.Scan()
+
+		input := strings.TrimSpace(scanner.Text())
+
+		fmt.Println("-------------------")
+
+		id, err := strconv.Atoi(input)
+		if err != nil {
+			fmt.Println("ID должен быть числом")
+			continue
+		}
+
+		index, err := findClientIndexByID(clients, id)
+		if err != nil {
+			fmt.Println(err)
+			fmt.Println("-------------------")
+			continue
+		}
+
+		for {
+			fmt.Println()
+			fmt.Println("1 — Удалить клиента")
+			fmt.Println("0 — Выход")
+			fmt.Print("Выберите действие: ")
+
+			scanner.Scan()
+			scanerDelete := strings.TrimSpace(strings.ToLower(scanner.Text()))
+			fmt.Println("-------------------")
+
+			switch scanerDelete {
+			case "1":
+				fmt.Println("Вы уверены?")
+				fmt.Println("1 — Да")
+				fmt.Println("0 — Нет")
+				scanner.Scan()
+				if strings.TrimSpace(strings.ToLower(scanner.Text())) == "1" {
+					clients = slices.Delete(clients, index, index+1)
+					fmt.Println("Клиент удалён")
+					return clients
+				}
+			case "0":
+				return clients
+			default:
+				fmt.Println("Неизвестная команда")
+			}
+		}
+	}
 }
