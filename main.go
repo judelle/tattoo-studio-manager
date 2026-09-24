@@ -83,24 +83,33 @@ func printClient(client Client) {
 	fmt.Println("-------------------")
 }
 
-func findClientByID(clients []Client, id string) (Client, error) {
+func findClientByID(clients []Client, id string) (Client, bool) {
 	for _, client := range clients {
 		if client.ID == id {
-			return client, nil
+			return client, true
 		}
 	}
 
-	return Client{}, fmt.Errorf("клиент с ID %s не найден", id)
+	return Client{}, false
 }
 
-func findClientIndexByID(clients []Client, id string) (int, error) {
+func findClientIndexByID(clients []Client, id string) (int, bool) {
 	for i, client := range clients {
 		if client.ID == id {
-			return i, nil
+			return i, true
 		}
 	}
 
-	return -1, fmt.Errorf("клиент с ID %s не найден", id)
+	return -1, false
+}
+
+func findClientByPhone(clients []Client, phone string) (Client, bool) {
+	for _, client := range clients {
+		if client.Phone == phone {
+			return client, true
+		}
+	}
+	return Client{}, false
 }
 
 func addClient(scanner *bufio.Scanner, clients []Client) Client {
@@ -139,22 +148,16 @@ func addClient(scanner *bufio.Scanner, clients []Client) Client {
 			fmt.Println("Номер телефона не может быть пустым")
 			continue
 		} else {
-			phoneExists := false
-			for _, v := range clients {
-				if v.Phone == phone {
-					fmt.Printf("Номер %s телефона принадлежит клиенту: %s, с ID: %s\n",
-						phone,
-						v.Name,
-						v.ID)
-					phoneExists = true
-					break
-				}
-			}
-			if phoneExists {
-				continue
+			client, isFound := findClientByPhone(clients, phone)
+			if !isFound {
+				break
+			} else {
+				fmt.Printf("Номер %s принадлежит клиенту: %s, с ID: %s\n",
+					phone,
+					client.Name,
+					client.ID)
 			}
 		}
-		break
 	}
 
 	fmt.Print("Введите соц. сеть: ")
@@ -187,10 +190,10 @@ func findClient(scanner *bufio.Scanner, clients []Client) {
 	scanner.Scan()
 
 	fmt.Println("-------------------")
-
-	client, err := findClientByID(clients, strings.TrimSpace(scanner.Text()))
-	if err != nil {
-		fmt.Println(err)
+	id := strings.TrimSpace(scanner.Text())
+	client, isFound := findClientByID(clients, id)
+	if !isFound {
+		fmt.Printf("клиент с ID %s не найден\n", id)
 		fmt.Println("-------------------")
 		return
 	}
@@ -203,10 +206,10 @@ func changeClient(scanner *bufio.Scanner, clients []Client) {
 	scanner.Scan()
 
 	fmt.Println("-------------------")
-
-	index, err := findClientIndexByID(clients, strings.TrimSpace(scanner.Text()))
-	if err != nil {
-		fmt.Println(err)
+	id := strings.TrimSpace(scanner.Text())
+	index, isFound := findClientIndexByID(clients, id)
+	if !isFound {
+		fmt.Printf("клиент с ID %s не найден\n", id)
 		fmt.Println("-------------------")
 		return
 	}
@@ -241,33 +244,24 @@ func changeClient(scanner *bufio.Scanner, clients []Client) {
 			}
 		case "2":
 			for {
-				fmt.Println("Введите новый номер или 0 для отмены")
+				newPhone := ""
+				fmt.Print("Введите номер телефона: ")
 				scanner.Scan()
-				newPhone := strings.TrimSpace(scanner.Text())
-				if newPhone == "0" {
-					break
-				}
-				if newPhone == "" {
+				if newPhone = strings.TrimSpace(scanner.Text()); newPhone == "" {
 					fmt.Println("Номер телефона не может быть пустым")
 					continue
 				} else {
-					phoneExists := false
-					for _, v := range clients {
-						if v.Phone == newPhone && v.ID != clients[index].ID {
-							fmt.Printf("Номер %s телефона принадлежит клиенту: %s, с ID: %s\n",
-								newPhone,
-								v.Name,
-								v.ID)
-							phoneExists = true
-							break
-						}
-					}
-					if phoneExists {
-						continue
+					client, isFound := findClientByPhone(clients, newPhone)
+					if !isFound || clients[index].ID == client.ID {
+						clients[index].Phone = newPhone
+						break
+					} else {
+						fmt.Printf("Номер %s принадлежит клиенту: %s, с ID: %s\n",
+							newPhone,
+							client.Name,
+							client.ID)
 					}
 				}
-				clients[index].Phone = newPhone
-				break
 			}
 		case "3":
 			fmt.Println("Введите новую соц. сеть")
@@ -308,13 +302,14 @@ func deleteClientChoice(scanner *bufio.Scanner, clients []Client) []Client {
 			return clients
 		}
 		fmt.Println("-------------------")
-
-		index, err := findClientIndexByID(clients, strings.TrimSpace(scanner.Text()))
-		if err != nil {
-			fmt.Println(err)
+		id := strings.TrimSpace(scanner.Text())
+		index, isFound := findClientIndexByID(clients, id)
+		if !isFound {
+			fmt.Printf("клиент с ID %s не найден\n", id)
 			fmt.Println("-------------------")
 			continue
 		}
+		printClient(clients[index])
 
 		for {
 			fmt.Println()
