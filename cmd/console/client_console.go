@@ -3,71 +3,14 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
+	"tattoo-studio/internal/client"
 
 	"github.com/google/uuid"
 )
 
-type Appointment struct {
-	ID           string
-	ClientID     string
-	Date         string
-	Time         string
-	Description  string
-	PlannedPrice int
-	FinalPrice   int
-	Deposit      int
-	Status       string
-	SketchPaths  []string
-}
-
-type Client struct {
-	ID      string
-	Name    string
-	IsAdult bool
-	Phone   string
-	Social  string
-}
-
-func main() {
-	clients := make([]Client, 0)
-	scanner := bufio.NewScanner(os.Stdin)
-	for {
-		fmt.Println()
-		fmt.Println("1 — Добавить клиента")
-		fmt.Println("2 — Показать клиентов")
-		fmt.Println("3 — Найти клиента по ID")
-		fmt.Println("4 — Изменить клиента")
-		fmt.Println("5 — Удалить клиента")
-		fmt.Println("0 — Выход")
-		fmt.Print("Выберите действие: ")
-
-		scanner.Scan()
-		choice := strings.TrimSpace(strings.ToLower(scanner.Text()))
-		fmt.Println("-------------------")
-		switch choice {
-		case "1":
-			newClient := addClient(scanner, clients)
-			clients = append(clients, newClient)
-		case "2":
-			printClients(clients)
-		case "3":
-			findClient(scanner, clients)
-		case "4":
-			changeClient(scanner, clients)
-		case "5":
-			clients = deleteClientChoice(scanner, clients)
-		case "0":
-			return
-		default:
-			fmt.Println("Неизвестная команда")
-		}
-	}
-}
-
-func printClient(client Client) {
+func printClient(client client.Client) {
 	fmt.Println("-------------------")
 	fmt.Println("ID:", client.ID)
 	fmt.Println("Имя:", client.Name)
@@ -80,39 +23,9 @@ func printClient(client Client) {
 
 	fmt.Println("Телефон:", client.Phone)
 	fmt.Println("Соц. сеть:", client.Social)
-	fmt.Println("-------------------")
 }
 
-func findClientByID(clients []Client, id string) (Client, bool) {
-	for _, client := range clients {
-		if client.ID == id {
-			return client, true
-		}
-	}
-
-	return Client{}, false
-}
-
-func findClientIndexByID(clients []Client, id string) (int, bool) {
-	for i, client := range clients {
-		if client.ID == id {
-			return i, true
-		}
-	}
-
-	return -1, false
-}
-
-func findClientByPhone(clients []Client, phone string) (Client, bool) {
-	for _, client := range clients {
-		if client.Phone == phone {
-			return client, true
-		}
-	}
-	return Client{}, false
-}
-
-func addClient(scanner *bufio.Scanner, clients []Client) Client {
+func addClient(scanner *bufio.Scanner, clients []client.Client) client.Client {
 	name := ""
 	for {
 		fmt.Print("Введите имя: ")
@@ -148,7 +61,7 @@ func addClient(scanner *bufio.Scanner, clients []Client) Client {
 			fmt.Println("Номер телефона не может быть пустым")
 			continue
 		} else {
-			client, isFound := findClientByPhone(clients, phone)
+			client, isFound := client.FindClientByPhone(clients, phone)
 			if !isFound {
 				break
 			} else {
@@ -164,7 +77,7 @@ func addClient(scanner *bufio.Scanner, clients []Client) Client {
 	scanner.Scan()
 	social := strings.TrimSpace(scanner.Text())
 
-	client := Client{
+	client := client.Client{
 		ID:      uuid.NewString(),
 		Name:    name,
 		IsAdult: isAdult,
@@ -174,24 +87,24 @@ func addClient(scanner *bufio.Scanner, clients []Client) Client {
 	return client
 }
 
-func printClients(clients []Client) {
+func printClients(clients []client.Client) {
 	if len(clients) == 0 {
 		fmt.Println("Вы еще не добавили клиентов")
 		return
 	}
-
+	fmt.Printf("Список из %d клиентов: \n", len(clients))
 	for _, client := range clients {
 		printClient(client)
 	}
 }
 
-func findClient(scanner *bufio.Scanner, clients []Client) {
+func findClient(scanner *bufio.Scanner, clients []client.Client) {
 	fmt.Print("Введите ID клиента: ")
 	scanner.Scan()
 
 	fmt.Println("-------------------")
 	id := strings.TrimSpace(scanner.Text())
-	client, isFound := findClientByID(clients, id)
+	client, isFound := client.FindClientByID(clients, id)
 	if !isFound {
 		fmt.Printf("клиент с ID %s не найден\n", id)
 		fmt.Println("-------------------")
@@ -201,13 +114,13 @@ func findClient(scanner *bufio.Scanner, clients []Client) {
 
 }
 
-func changeClient(scanner *bufio.Scanner, clients []Client) {
+func changeClient(scanner *bufio.Scanner, clients []client.Client) {
 	fmt.Print("Введите ID клиента для изменения: ")
 	scanner.Scan()
 
 	fmt.Println("-------------------")
 	id := strings.TrimSpace(scanner.Text())
-	index, isFound := findClientIndexByID(clients, id)
+	index, isFound := client.FindClientIndexByID(clients, id)
 	if !isFound {
 		fmt.Printf("клиент с ID %s не найден\n", id)
 		fmt.Println("-------------------")
@@ -251,7 +164,7 @@ func changeClient(scanner *bufio.Scanner, clients []Client) {
 					fmt.Println("Номер телефона не может быть пустым")
 					continue
 				} else {
-					client, isFound := findClientByPhone(clients, newPhone)
+					client, isFound := client.FindClientByPhone(clients, newPhone)
 					if !isFound || clients[index].ID == client.ID {
 						clients[index].Phone = newPhone
 						break
@@ -293,7 +206,7 @@ func changeClient(scanner *bufio.Scanner, clients []Client) {
 
 }
 
-func deleteClientChoice(scanner *bufio.Scanner, clients []Client) []Client {
+func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client) []client.Client {
 	for {
 		fmt.Println("Для выхода - 0")
 		fmt.Print("Введите ID клиента для удаления: ")
@@ -303,7 +216,7 @@ func deleteClientChoice(scanner *bufio.Scanner, clients []Client) []Client {
 		}
 		fmt.Println("-------------------")
 		id := strings.TrimSpace(scanner.Text())
-		index, isFound := findClientIndexByID(clients, id)
+		index, isFound := client.FindClientIndexByID(clients, id)
 		if !isFound {
 			fmt.Printf("клиент с ID %s не найден\n", id)
 			fmt.Println("-------------------")
