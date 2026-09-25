@@ -1,6 +1,6 @@
 package client
 
-func FindClientByID(clients []Client, id string) (Client, bool) {
+func FindByID(clients []Client, id string) (Client, bool) {
 	for _, client := range clients {
 		if client.ID == id {
 			return client, true
@@ -10,7 +10,7 @@ func FindClientByID(clients []Client, id string) (Client, bool) {
 	return Client{}, false
 }
 
-func FindClientIndexByID(clients []Client, id string) (int, bool) {
+func FindIndexByID(clients []Client, id string) (int, bool) {
 	for i, client := range clients {
 		if client.ID == id {
 			return i, true
@@ -20,7 +20,7 @@ func FindClientIndexByID(clients []Client, id string) (int, bool) {
 	return -1, false
 }
 
-func FindClientByPhone(clients []Client, phone string) (Client, bool) {
+func FindByPhone(clients []Client, phone string) (Client, bool) {
 	for _, client := range clients {
 		if client.Phone == phone {
 			return client, true

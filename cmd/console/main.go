@@ -5,24 +5,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
 )
 
-type Appointment struct {
-	ID           string
-	ClientID     string
-	Date         string
-	Time         string
-	Description  string
-	PlannedPrice int
-	FinalPrice   int
-	Deposit      int
-	Status       string
-	SketchPaths  []string
-}
-
 func main() {
 	clients := make([]client.Client, 0)
+	appointments := make([]appointment.Appointment, 0)
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
@@ -32,6 +21,7 @@ func main() {
 		fmt.Println("3 — Найти клиента по ID")
 		fmt.Println("4 — Изменить клиента")
 		fmt.Println("5 — Удалить клиента")
+		fmt.Println("6 — Добавить запись")
 		fmt.Println("0 — Выход")
 		fmt.Print("Выберите действие: ")
 
@@ -50,6 +40,15 @@ func main() {
 			changeClient(scanner, clients)
 		case "5":
 			clients = deleteClientChoice(scanner, clients)
+		case "6":
+			newAppointment, ok := addAppointment(scanner, clients, appointments)
+			if !ok {
+				fmt.Println("Запись не добавлена")
+				continue
+			}
+			appointments = append(appointments, newAppointment)
+			fmt.Println("Запись успешно добавлена")
+
 		case "0":
 			return
 		default:
