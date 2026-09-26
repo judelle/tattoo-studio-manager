@@ -22,6 +22,7 @@ func main() {
 		fmt.Println("4 — Изменить клиента")
 		fmt.Println("5 — Удалить клиента")
 		fmt.Println("6 — Добавить запись")
+		fmt.Println("7 — Найти записи на дату")
 		fmt.Println("0 — Выход")
 		fmt.Print("Выберите действие: ")
 
@@ -48,7 +49,8 @@ func main() {
 			}
 			appointments = append(appointments, newAppointment)
 			fmt.Println("Запись успешно добавлена")
-
+		case "7":
+			printAppointmentByDate(scanner, appointments, clients)
 		case "0":
 			return
 		default:

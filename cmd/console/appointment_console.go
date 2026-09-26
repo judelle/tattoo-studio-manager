@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"strconv"
+	"strings"
 	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
 	"tattoo-studio/internal/datetime"
@@ -60,7 +61,7 @@ func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointment
 
 	fmt.Println("Введите описание: ")
 	scanner.Scan()
-	description := scanner.Text()
+	description := strings.TrimSpace(scanner.Text())
 	var plannedPrice int
 	for {
 		fmt.Println("Введите планируемую цену или -1 для выхода: ")
@@ -107,4 +108,50 @@ func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointment
 		Deposit:      deposit,
 		Status:       appointment.StatusPlanned,
 	}, true
+}
+
+func printAppointmentByDate(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) {
+	for {
+		fmt.Println("Введите дату или 0 для выхода: ")
+		scanner.Scan()
+		date := scanner.Text()
+		if date == "0" {
+			return
+		}
+		parsedDate, err := time.ParseInLocation("02.01.2006", date, datetime.Moscow)
+		if err != nil {
+			fmt.Println("Некорректная дата")
+			continue
+		}
+		appointmentsByDate := appointment.FindByDate(appointments, parsedDate)
+		if len(appointmentsByDate) == 0 {
+			fmt.Printf("Записей на: %s не найдено\n", parsedDate.Format("02.01.2006"))
+			continue
+		}
+		fmt.Printf("Записи на %s\n", parsedDate.Format("02.01.2006"))
+		fmt.Println()
+		for _, v := range appointmentsByDate {
+			fmt.Printf("%s\n", v.StartAt.Format("15:04"))
+			clientAtDate, isExist := client.FindByID(clients, v.ClientID)
+			if !isExist {
+				fmt.Println("Ошибка поиска клиента") // пока как заглушку оставлю потом надо сделать норм обработку
+				continue
+			}
+			fmt.Printf("Клиент: %s\n", clientAtDate.Name)
+			if !clientAtDate.IsAdult {
+				fmt.Println("Несовершеннолетний клиент")
+			}
+			if v.Description != "" {
+				fmt.Printf("Описание: %s\n", v.Description)
+			}
+			fmt.Printf("Планируемая стоимость: %d\n", v.PlannedPrice)
+			fmt.Printf("Предоплата: %d\n", v.Deposit)
+			if v.FinalPrice != 0 {
+				fmt.Printf("Финальная стоимость: %d\n", v.FinalPrice)
+			}
+			fmt.Printf("Статус: %s\n", v.Status)
+			fmt.Println("-------------------")
+		}
+		return
+	}
 }

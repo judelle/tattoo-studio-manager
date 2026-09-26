@@ -1,6 +1,8 @@
 package datetime
 
-import "time"
+import (
+	"time"
+)
 
 var Moscow = mustLoadLocation("Europe/Moscow")
 
