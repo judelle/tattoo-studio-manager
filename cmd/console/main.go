@@ -23,6 +23,7 @@ func main() {
 		fmt.Println("5 — Удалить клиента")
 		fmt.Println("6 — Добавить запись")
 		fmt.Println("7 — Найти записи на дату")
+		fmt.Println("8 — Изменить дату записи")
 		fmt.Println("0 — Выход")
 		fmt.Print("Выберите действие: ")
 

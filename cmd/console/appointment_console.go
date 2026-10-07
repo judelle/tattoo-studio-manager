@@ -52,7 +52,7 @@ func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointment
 			continue
 		}
 
-		if appointment.IsTimeTaken(appointments, startAt) {
+		if appointment.IsTimeTaken(appointments, startAt, "") {
 			fmt.Println("Время уже занято")
 			continue
 		}
@@ -152,6 +152,66 @@ func printAppointmentByDate(scanner *bufio.Scanner, appointments []appointment.A
 			fmt.Printf("Статус: %s\n", v.Status)
 			fmt.Println("-------------------")
 		}
+		return
+	}
+}
+
+func reschedulingAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) {
+	for {
+		fmt.Println("Введите ID записи или 0 для выхода: ")
+		scanner.Scan()
+		id := scanner.Text()
+
+		if id == "0" {
+			return
+		}
+
+		idx, ok := appointment.FindIndexByID(appointments, id)
+		if !ok {
+			fmt.Println("Запись не найдена")
+			continue
+		}
+
+		if appointments[idx].Status == appointment.StatusCompleted {
+			fmt.Println("Нельзя перенести выполненную запись")
+			continue
+		}
+
+		fmt.Println("Введите новую дату записи: ")
+		scanner.Scan()
+		date := scanner.Text()
+
+		fmt.Println("Введите новое время записи: ")
+		scanner.Scan()
+		timeValue := scanner.Text()
+
+		startAt, err := time.ParseInLocation(
+			"02.01.2006 15:04",
+			date+" "+timeValue,
+			datetime.Moscow,
+		)
+		if err != nil {
+			fmt.Println("Дата и время введены некорректно")
+			continue
+		}
+
+		if startAt.Before(time.Now().In(datetime.Moscow)) {
+			fmt.Println("Запись не может быть перенесена в прошлое")
+			continue
+		}
+
+		if appointment.IsTimeTaken(appointments, startAt, appointments[idx].ID) {
+			fmt.Println("Время уже занято")
+			continue
+		}
+
+		if appointments[idx].Status == appointment.StatusCancelled {
+			appointments[idx].Status = appointment.StatusPlanned
+		}
+
+		appointments[idx].StartAt = startAt
+
+		fmt.Println("Запись успешно перенесена")
 		return
 	}
 }

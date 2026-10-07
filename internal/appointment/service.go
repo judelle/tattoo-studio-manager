@@ -42,8 +42,16 @@ func FindByDate(appointments []Appointment, startAt time.Time) []Appointment {
 	return result
 }
 
-func IsTimeTaken(appointments []Appointment, startAt time.Time) bool {
+func IsTimeTaken(
+	appointments []Appointment,
+	startAt time.Time,
+	ignoreID string,
+) bool {
 	for _, appointment := range appointments {
+		if appointment.ID == ignoreID {
+			continue
+		}
+
 		if appointment.Status == StatusPlanned &&
 			appointment.StartAt.Equal(startAt) {
 			return true
