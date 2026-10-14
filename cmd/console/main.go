@@ -26,6 +26,7 @@ func main() {
 		fmt.Println("8 — Перенести запись")
 		fmt.Println("9 — Завершить запись")
 		fmt.Println("10 — Отменить запись")
+		fmt.Println("11 — Удалить запись")
 		fmt.Println("0 — Выход")
 		fmt.Print("Выберите действие: ")
 
@@ -60,6 +61,8 @@ func main() {
 			completeAppointment(scanner, appointments)
 		case "10":
 			cancelAppointment(scanner, appointments)
+		case "11":
+			appointments = deleteAppointmentChoice(scanner, appointments, clients)
 		case "0":
 			return
 		default:

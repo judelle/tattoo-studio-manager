@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"tattoo-studio/internal/appointment"
@@ -110,6 +111,28 @@ func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointment
 	}, true
 }
 
+func printAppointment(appointmentPrint appointment.Appointment, client client.Client) {
+	fmt.Println("ID записи:", appointmentPrint.ID)
+	fmt.Println(
+		"Дата и время:",
+		appointmentPrint.StartAt.Format("02.01.2006 15:04"),
+	)
+	fmt.Printf("Клиент: %s\n", client.Name)
+	if !client.IsAdult {
+		fmt.Println("Несовершеннолетний клиент")
+	}
+	if appointmentPrint.Description != "" {
+		fmt.Printf("Описание: %s\n", appointmentPrint.Description)
+	}
+	fmt.Printf("Планируемая стоимость: %d ₽\n", appointmentPrint.PlannedPrice)
+	fmt.Printf("Предоплата: %d ₽\n", appointmentPrint.Deposit)
+	if appointmentPrint.Status == appointment.StatusCompleted {
+		fmt.Printf("Финальная стоимость: %d ₽\n", appointmentPrint.FinalPrice)
+	}
+	fmt.Printf("Статус: %s\n", appointmentPrint.Status)
+	fmt.Println("-------------------")
+}
+
 func printAppointmentByDate(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) {
 	for {
 		fmt.Println("Введите дату или 0 для выхода: ")
@@ -131,26 +154,12 @@ func printAppointmentByDate(scanner *bufio.Scanner, appointments []appointment.A
 		fmt.Printf("Записи на %s\n", parsedDate.Format("02.01.2006"))
 		fmt.Println()
 		for _, v := range appointmentsByDate {
-			fmt.Printf("%s\n", v.StartAt.Format("15:04"))
 			clientAtDate, isExist := client.FindByID(clients, v.ClientID)
 			if !isExist {
-				fmt.Println("Ошибка поиска клиента") // пока как заглушку оставлю потом надо сделать норм обработку
+				fmt.Println("Ошибка поиска клиента")
 				continue
 			}
-			fmt.Printf("Клиент: %s\n", clientAtDate.Name)
-			if !clientAtDate.IsAdult {
-				fmt.Println("Несовершеннолетний клиент")
-			}
-			if v.Description != "" {
-				fmt.Printf("Описание: %s\n", v.Description)
-			}
-			fmt.Printf("Планируемая стоимость: %d\n", v.PlannedPrice)
-			fmt.Printf("Предоплата: %d\n", v.Deposit)
-			if v.Status == appointment.StatusCompleted {
-				fmt.Printf("Финальная стоимость: %d ₽\n", v.FinalPrice)
-			}
-			fmt.Printf("Статус: %s\n", v.Status)
-			fmt.Println("-------------------")
+			printAppointment(v, clientAtDate)
 		}
 		return
 	}
@@ -319,5 +328,72 @@ func cancelAppointment(scanner *bufio.Scanner, appointments []appointment.Appoin
 		appointments[idx].Status = appointment.StatusCancelled
 		fmt.Println("Запись успешно отменена")
 		return
+	}
+}
+
+func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) []appointment.Appointment {
+	for {
+		fmt.Print("Введите ID записи для удаления или 0 для выхода: ")
+		scanner.Scan()
+
+		if scanner.Text() == "0" {
+			return appointments
+		}
+
+		idx, found := appointment.FindIndexByID(
+			appointments,
+			scanner.Text(),
+		)
+		if !found {
+			fmt.Println("Запись не найдена")
+			continue
+		}
+		if appointments[idx].Status == appointment.StatusCompleted {
+			fmt.Println("Нельзя удалить завершённую запись")
+			continue
+		}
+
+		if appointments[idx].Status == appointment.StatusCancelled {
+			fmt.Println("Нельзя удалить отменённую запись")
+			continue
+		}
+		foundClient, found := client.FindByID(
+			clients,
+			appointments[idx].ClientID,
+		)
+
+		if !found {
+			fmt.Println("Клиент записи не найден")
+			continue
+		}
+
+		printAppointment(appointments[idx], foundClient)
+		for {
+			fmt.Println()
+			fmt.Println("1 — Удалить запись")
+			fmt.Println("0 — Выход")
+			fmt.Print("Выберите действие: ")
+
+			scanner.Scan()
+			deleteChoice := strings.TrimSpace(strings.ToLower(scanner.Text()))
+			fmt.Println("-------------------")
+
+			switch deleteChoice {
+			case "1":
+				fmt.Println("Вы уверены?")
+				fmt.Println("1 — Да")
+				fmt.Println("0 — Нет")
+				scanner.Scan()
+				if strings.TrimSpace(scanner.Text()) == "1" {
+					appointments = slices.Delete(appointments, idx, idx+1)
+					fmt.Println("Запись удалена")
+					return appointments
+				}
+			case "0":
+				return appointments
+			default:
+				fmt.Println("Неизвестная команда")
+			}
+		}
 	}
 }
