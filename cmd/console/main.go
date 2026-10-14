@@ -22,7 +22,7 @@ func main() {
 		fmt.Println("4 — Изменить клиента")
 		fmt.Println("5 — Удалить клиента")
 		fmt.Println("6 — Добавить запись")
-		fmt.Println("7 — Найти записи на дату")
+		fmt.Println("7 — Найти записи по дате")
 		fmt.Println("8 — Изменить дату записи")
 		fmt.Println("9 — Завершить запись")
 		fmt.Println("0 — Выход")
@@ -42,7 +42,7 @@ func main() {
 		case "4":
 			changeClient(scanner, clients)
 		case "5":
-			clients = deleteClientChoice(scanner, clients)
+			clients = deleteClientChoice(scanner, clients, appointments)
 		case "6":
 			newAppointment, ok := addAppointment(scanner, clients, appointments)
 			if !ok {

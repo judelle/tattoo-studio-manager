@@ -42,11 +42,7 @@ func FindByDate(appointments []Appointment, startAt time.Time) []Appointment {
 	return result
 }
 
-func IsTimeTaken(
-	appointments []Appointment,
-	startAt time.Time,
-	ignoreID string,
-) bool {
+func IsTimeTaken(appointments []Appointment, startAt time.Time, ignoreID string) bool {
 	for _, appointment := range appointments {
 		if appointment.ID == ignoreID {
 			continue
@@ -58,5 +54,14 @@ func IsTimeTaken(
 		}
 	}
 
+	return false
+}
+
+func HasAppointmentsForClient(appointments []Appointment, clientId string) bool {
+	for _, appointment := range appointments {
+		if appointment.ClientID == clientId {
+			return true
+		}
+	}
 	return false
 }

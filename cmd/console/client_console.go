@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
 
 	"github.com/google/uuid"
@@ -206,7 +207,7 @@ func changeClient(scanner *bufio.Scanner, clients []client.Client) {
 
 }
 
-func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client) []client.Client {
+func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client, appointments []appointment.Appointment) []client.Client {
 	for {
 		fmt.Println("Для выхода - 0")
 		fmt.Print("Введите ID клиента для удаления: ")
@@ -223,6 +224,10 @@ func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client) []clien
 			continue
 		}
 		printClient(clients[index])
+		if appointment.HasAppointmentsForClient(appointments, clients[index].ID) {
+			fmt.Println("Нельзя удалить клиента, у него есть история записей")
+			continue
+		}
 
 		for {
 			fmt.Println()
