@@ -146,8 +146,8 @@ func printAppointmentByDate(scanner *bufio.Scanner, appointments []appointment.A
 			}
 			fmt.Printf("Планируемая стоимость: %d\n", v.PlannedPrice)
 			fmt.Printf("Предоплата: %d\n", v.Deposit)
-			if v.FinalPrice != 0 {
-				fmt.Printf("Финальная стоимость: %d\n", v.FinalPrice)
+			if v.Status == appointment.StatusCompleted {
+				fmt.Printf("Финальная стоимость: %d ₽\n", v.FinalPrice)
 			}
 			fmt.Printf("Статус: %s\n", v.Status)
 			fmt.Println("-------------------")
@@ -212,6 +212,78 @@ func reschedulingAppointment(scanner *bufio.Scanner, appointments []appointment.
 		appointments[idx].StartAt = startAt
 
 		fmt.Println("Запись успешно перенесена")
+		return
+	}
+}
+
+func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) {
+	for {
+		fmt.Print("Введите ID записи для завершения или 0 для выхода: ")
+		scanner.Scan()
+
+		if scanner.Text() == "0" {
+			return
+		}
+
+		idx, found := appointment.FindIndexByID(
+			appointments,
+			scanner.Text(),
+		)
+		if !found {
+			fmt.Println("Запись не найдена")
+			continue
+		}
+
+		if appointments[idx].Status == appointment.StatusCancelled {
+			fmt.Println("Отменённую запись нельзя завершить")
+			continue
+		}
+
+		if appointments[idx].Status == appointment.StatusCompleted {
+			fmt.Println("Запись уже завершена")
+			continue
+		}
+
+		fmt.Println("Введите итоговую сумму: ")
+		scanner.Scan()
+
+		finalPrice, err := strconv.Atoi(scanner.Text())
+		if err != nil {
+			fmt.Println("Ошибка ввода суммы")
+			continue
+		}
+
+		if finalPrice < 0 {
+			fmt.Println("Итоговая сумма не может быть меньше 0")
+			continue
+		}
+
+		if finalPrice < appointments[idx].Deposit {
+			fmt.Println("Итоговая сумма меньше депозита. Вы уверены? Д/Н")
+			scanner.Scan()
+
+			answer := strings.TrimSpace(
+				strings.ToLower(scanner.Text()),
+			)
+
+			if answer != "д" {
+				continue
+			}
+		}
+
+		appointments[idx].FinalPrice = finalPrice
+		appointments[idx].Status = appointment.StatusCompleted
+
+		fmt.Println("Запись успешно завершена")
+		fmt.Printf(
+			"Планируемая стоимость: %d ₽\n",
+			appointments[idx].PlannedPrice,
+		)
+		fmt.Printf(
+			"Итоговая стоимость: %d ₽\n",
+			appointments[idx].FinalPrice,
+		)
+
 		return
 	}
 }
