@@ -287,3 +287,37 @@ func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appo
 		return
 	}
 }
+
+func cancelAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) {
+	for {
+		fmt.Print("Введите ID записи для отмены или 0 для выхода: ")
+		scanner.Scan()
+
+		if scanner.Text() == "0" {
+			return
+		}
+
+		idx, found := appointment.FindIndexByID(
+			appointments,
+			scanner.Text(),
+		)
+		if !found {
+			fmt.Println("Запись не найдена")
+			continue
+		}
+
+		if appointments[idx].Status == appointment.StatusCancelled {
+			fmt.Println("Запись уже отменена")
+			continue
+		}
+
+		if appointments[idx].Status == appointment.StatusCompleted {
+			fmt.Println("Завершённую запись нельзя отменить")
+			continue
+		}
+
+		appointments[idx].Status = appointment.StatusCancelled
+		fmt.Println("Запись успешно отменена")
+		return
+	}
+}

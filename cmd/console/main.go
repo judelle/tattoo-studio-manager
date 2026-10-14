@@ -23,8 +23,9 @@ func main() {
 		fmt.Println("5 — Удалить клиента")
 		fmt.Println("6 — Добавить запись")
 		fmt.Println("7 — Найти записи по дате")
-		fmt.Println("8 — Изменить дату записи")
+		fmt.Println("8 — Перенести запись")
 		fmt.Println("9 — Завершить запись")
+		fmt.Println("10 — Отменить запись")
 		fmt.Println("0 — Выход")
 		fmt.Print("Выберите действие: ")
 
@@ -57,6 +58,8 @@ func main() {
 			reschedulingAppointment(scanner, appointments)
 		case "9":
 			completeAppointment(scanner, appointments)
+		case "10":
+			cancelAppointment(scanner, appointments)
 		case "0":
 			return
 		default:
