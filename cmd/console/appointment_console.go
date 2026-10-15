@@ -397,3 +397,31 @@ func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.
 		}
 	}
 }
+
+func printClientHistory(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) {
+	for {
+		fmt.Print("Введите ID клиента что бы увидеть историю сеансов или 0 для выхода: ")
+		scanner.Scan()
+
+		if scanner.Text() == "0" {
+			return
+		}
+		clientId := scanner.Text()
+
+		client, isFound := client.FindByID(clients, clientId)
+		if !isFound {
+			fmt.Println("Клиент не найден")
+			continue
+		}
+
+		clientHistory := appointment.FindByClientID(appointments, client.ID)
+
+		if len(clientHistory) == 0 {
+			fmt.Println("У клиента еще нет записей")
+		}
+		for _, v := range clientHistory {
+			printAppointment(v, client)
+		}
+		return
+	}
+}

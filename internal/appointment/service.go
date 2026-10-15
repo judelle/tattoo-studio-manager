@@ -65,3 +65,19 @@ func HasAppointmentsForClient(appointments []Appointment, clientId string) bool 
 	}
 	return false
 }
+
+func FindByClientID(appointments []Appointment, clientID string) []Appointment {
+	result := make([]Appointment, 0)
+	for _, v := range appointments {
+		if v.ClientID == clientID {
+			result = append(result, v)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].StartAt.After(result[j].StartAt)
+	})
+	if len(result) == 0 {
+		return result
+	}
+	return result
+}
