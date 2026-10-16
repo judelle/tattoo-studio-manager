@@ -425,3 +425,20 @@ func printClientHistory(scanner *bufio.Scanner, appointments []appointment.Appoi
 		return
 	}
 }
+
+func printUpcoming(appointments []appointment.Appointment, clients []client.Client) {
+	upcomingAppointments := appointment.FindUpcoming(appointments, time.Now().In(datetime.Moscow))
+	if len(upcomingAppointments) == 0 {
+		fmt.Println("Ближайших записей нет")
+		return
+	}
+	for _, upcomingAppointment := range upcomingAppointments {
+		foundClient, found := client.FindByID(clients, upcomingAppointment.ClientID)
+		if !found {
+			fmt.Println("Ошибка поиска клиента")
+			continue
+		}
+		printAppointment(upcomingAppointment, foundClient)
+	}
+
+}

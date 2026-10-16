@@ -76,8 +76,18 @@ func FindByClientID(appointments []Appointment, clientID string) []Appointment {
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].StartAt.After(result[j].StartAt)
 	})
-	if len(result) == 0 {
-		return result
+	return result
+}
+
+func FindUpcoming(appointments []Appointment, from time.Time) []Appointment {
+	result := make([]Appointment, 0)
+	for _, appointment := range appointments {
+		if appointment.Status == StatusPlanned && from.Before(appointment.StartAt) {
+			result = append(result, appointment)
+		}
 	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].StartAt.Before(result[j].StartAt)
+	})
 	return result
 }
