@@ -690,7 +690,7 @@ func TestCancel(t *testing.T) {
 		},
 		{
 			name:          "appointment does not exist",
-			appointments:  []Appointment{},
+			appointments:  nil,
 			id:            "999",
 			expectedError: ErrAppointmentNotFound,
 		},
@@ -716,6 +716,191 @@ func TestCancel(t *testing.T) {
 
 				t.Errorf(
 					"expected status %s, got %s",
+					tt.expectedStatus,
+					tt.appointments[0].Status,
+				)
+			}
+		})
+	}
+}
+
+func TestComplete(t *testing.T) {
+	tests := []struct {
+		name               string
+		appointments       []Appointment
+		id                 string
+		finalPrice         int
+		expectedError      error
+		expectedFinalPrice int
+		expectedStatus     Status
+	}{
+		{
+			name: "planned appointment can be completed",
+			appointments: []Appointment{
+				{
+					ID:         "1",
+					Status:     StatusPlanned,
+					FinalPrice: 0,
+				},
+			},
+			id:                 "1",
+			finalPrice:         5000,
+			expectedError:      nil,
+			expectedFinalPrice: 5000,
+			expectedStatus:     StatusCompleted,
+		},
+		{
+			name: "appointment can be completed with zero final price",
+			appointments: []Appointment{
+				{
+					ID:         "1",
+					Status:     StatusPlanned,
+					FinalPrice: 0,
+				},
+			},
+			id:                 "1",
+			finalPrice:         0,
+			expectedError:      nil,
+			expectedFinalPrice: 0,
+			expectedStatus:     StatusCompleted,
+		},
+		{
+			name: "appointment not found",
+			appointments: []Appointment{
+				{
+					ID:         "1",
+					Status:     StatusPlanned,
+					FinalPrice: 0,
+				},
+			},
+			id:                 "999",
+			finalPrice:         5000,
+			expectedError:      ErrAppointmentNotFound,
+			expectedFinalPrice: 0,
+			expectedStatus:     StatusPlanned,
+		},
+		{
+			name: "completed appointment cannot be completed again",
+			appointments: []Appointment{
+				{
+					ID:         "1",
+					Status:     StatusCompleted,
+					FinalPrice: 5000,
+				},
+			},
+			id:                 "1",
+			finalPrice:         10000,
+			expectedError:      ErrAppointmentCompleted,
+			expectedFinalPrice: 5000,
+			expectedStatus:     StatusCompleted,
+		},
+		{
+			name: "cancelled appointment cannot be completed",
+			appointments: []Appointment{
+				{
+					ID:         "1",
+					Status:     StatusCancelled,
+					FinalPrice: 0,
+				},
+			},
+			id:                 "1",
+			finalPrice:         5000,
+			expectedError:      ErrAppointmentCancelled,
+			expectedFinalPrice: 0,
+			expectedStatus:     StatusCancelled,
+		},
+		{
+			name: "negative final price is rejected",
+			appointments: []Appointment{
+				{
+					ID:         "1",
+					Status:     StatusPlanned,
+					FinalPrice: 0,
+				},
+			},
+			id:                 "1",
+			finalPrice:         -5000,
+			expectedError:      ErrFinalPriceLessThanZero,
+			expectedFinalPrice: 0,
+			expectedStatus:     StatusPlanned,
+		},
+		{
+			name:          "empty appointments returns not found",
+			appointments:  nil,
+			id:            "999",
+			finalPrice:    5000,
+			expectedError: ErrAppointmentNotFound,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			completedAppointment, err := Complete(
+				tt.appointments,
+				tt.id,
+				tt.finalPrice,
+			)
+
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf(
+					"expected error %v, got %v",
+					tt.expectedError,
+					err,
+				)
+			}
+
+			if err != nil {
+				if len(tt.appointments) > 0 {
+					if tt.appointments[0].FinalPrice != tt.expectedFinalPrice {
+						t.Errorf(
+							"expected final price %d, got %d",
+							tt.expectedFinalPrice,
+							tt.appointments[0].FinalPrice,
+						)
+					}
+
+					if tt.appointments[0].Status != tt.expectedStatus {
+						t.Errorf(
+							"expected status %s, got %s",
+							tt.expectedStatus,
+							tt.appointments[0].Status,
+						)
+					}
+				}
+
+				return
+			}
+
+			if completedAppointment.FinalPrice != tt.expectedFinalPrice {
+				t.Errorf(
+					"expected final price %d, got %d",
+					tt.expectedFinalPrice,
+					completedAppointment.FinalPrice,
+				)
+			}
+
+			if completedAppointment.Status != tt.expectedStatus {
+				t.Errorf(
+					"expected status %s, got %s",
+					tt.expectedStatus,
+					completedAppointment.Status,
+				)
+			}
+
+			if len(tt.appointments) == 0 {
+				t.Fatal("expected appointments slice not to be empty")
+			}
+
+			if tt.appointments[0].FinalPrice != tt.expectedFinalPrice {
+				t.Errorf(
+					"expected source appointment final price %d, got %d",
+					tt.expectedFinalPrice,
+					tt.appointments[0].FinalPrice,
+				)
+			}
+
+			if tt.appointments[0].Status != tt.expectedStatus {
+				t.Errorf(
+					"expected source appointment status %s, got %s",
 					tt.expectedStatus,
 					tt.appointments[0].Status,
 				)
