@@ -91,3 +91,22 @@ func FindUpcoming(appointments []Appointment, from time.Time) []Appointment {
 	})
 	return result
 }
+
+func Cancel(appointments []Appointment, id string) error {
+	index, found := FindIndexByID(appointments, id)
+	if !found {
+		return ErrAppointmentNotFound
+	}
+
+	switch appointments[index].Status {
+	case StatusCancelled:
+		return ErrAppointmentAlreadyCancelled
+
+	case StatusCompleted:
+		return ErrAppointmentCompleted
+	}
+
+	appointments[index].Status = StatusCancelled
+
+	return nil
+}

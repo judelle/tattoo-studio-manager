@@ -1,6 +1,7 @@
 package appointment
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -640,5 +641,85 @@ func TestFindUpcomingReturnsEmptySlice(t *testing.T) {
 			"expected no upcoming appointments, got %d",
 			len(result),
 		)
+	}
+}
+
+func TestCancel(t *testing.T) {
+	tests := []struct {
+		name           string
+		appointments   []Appointment
+		id             string
+		expectedError  error
+		expectedStatus Status
+	}{
+		{
+			name: "planned appointment can be cancelled",
+			appointments: []Appointment{
+				{
+					ID:     "1",
+					Status: StatusPlanned,
+				},
+			},
+			id:             "1",
+			expectedError:  nil,
+			expectedStatus: StatusCancelled,
+		},
+		{
+			name: "cancelled appointment cannot be cancelled again",
+			appointments: []Appointment{
+				{
+					ID:     "1",
+					Status: StatusCancelled,
+				},
+			},
+			id:             "1",
+			expectedError:  ErrAppointmentAlreadyCancelled,
+			expectedStatus: StatusCancelled,
+		},
+		{
+			name: "completed appointment cannot be cancelled",
+			appointments: []Appointment{
+				{
+					ID:     "1",
+					Status: StatusCompleted,
+				},
+			},
+			id:             "1",
+			expectedError:  ErrAppointmentCompleted,
+			expectedStatus: StatusCompleted,
+		},
+		{
+			name:          "appointment does not exist",
+			appointments:  []Appointment{},
+			id:            "999",
+			expectedError: ErrAppointmentNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Cancel(
+				tt.appointments,
+				tt.id,
+			)
+
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf(
+					"expected error %v, got %v",
+					tt.expectedError,
+					err,
+				)
+			}
+
+			if len(tt.appointments) > 0 &&
+				tt.appointments[0].Status != tt.expectedStatus {
+
+				t.Errorf(
+					"expected status %s, got %s",
+					tt.expectedStatus,
+					tt.appointments[0].Status,
+				)
+			}
+		})
 	}
 }

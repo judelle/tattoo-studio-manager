@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
@@ -302,32 +303,31 @@ func cancelAppointment(scanner *bufio.Scanner, appointments []appointment.Appoin
 		fmt.Print("Введите ID записи для отмены или 0 для выхода: ")
 		scanner.Scan()
 
-		if scanner.Text() == "0" {
+		id := scanner.Text()
+
+		if id == "0" {
 			return
 		}
 
-		idx, found := appointment.FindIndexByID(
-			appointments,
-			scanner.Text(),
-		)
-		if !found {
+		err := appointment.Cancel(appointments, id)
+
+		switch {
+		case errors.Is(err, appointment.ErrAppointmentNotFound):
 			fmt.Println("Запись не найдена")
-			continue
-		}
 
-		if appointments[idx].Status == appointment.StatusCancelled {
+		case errors.Is(err, appointment.ErrAppointmentAlreadyCancelled):
 			fmt.Println("Запись уже отменена")
-			continue
-		}
 
-		if appointments[idx].Status == appointment.StatusCompleted {
+		case errors.Is(err, appointment.ErrAppointmentCompleted):
 			fmt.Println("Завершённую запись нельзя отменить")
-			continue
-		}
 
-		appointments[idx].Status = appointment.StatusCancelled
-		fmt.Println("Запись успешно отменена")
-		return
+		case err != nil:
+			fmt.Println("Неизвестная ошибка")
+
+		default:
+			fmt.Println("Запись успешно отменена")
+			return
+		}
 	}
 }
 
