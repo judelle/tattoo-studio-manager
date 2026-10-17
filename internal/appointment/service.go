@@ -100,7 +100,7 @@ func Cancel(appointments []Appointment, id string) error {
 
 	switch appointments[index].Status {
 	case StatusCancelled:
-		return ErrAppointmentAlreadyCancelled
+		return ErrAppointmentCancelled
 
 	case StatusCompleted:
 		return ErrAppointmentCompleted
@@ -109,4 +109,32 @@ func Cancel(appointments []Appointment, id string) error {
 	appointments[index].Status = StatusCancelled
 
 	return nil
+}
+
+func Complete(appointments []Appointment, id string, finalPrice int) (Appointment, error) {
+	idx, found := FindIndexByID(
+		appointments,
+		id,
+	)
+	if !found {
+		return Appointment{}, ErrAppointmentNotFound
+
+	}
+
+	if appointments[idx].Status == StatusCompleted {
+		return Appointment{}, ErrAppointmentCompleted
+	}
+
+	if appointments[idx].Status == StatusCancelled {
+		return Appointment{}, ErrAppointmentCancelled
+	}
+
+	if finalPrice < 0 {
+		return Appointment{}, ErrFinalPriceLessThanZero
+	}
+
+	appointments[idx].FinalPrice = finalPrice
+	appointments[idx].Status = StatusCompleted
+
+	return appointments[idx], nil
 }

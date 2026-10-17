@@ -673,7 +673,7 @@ func TestCancel(t *testing.T) {
 				},
 			},
 			id:             "1",
-			expectedError:  ErrAppointmentAlreadyCancelled,
+			expectedError:  ErrAppointmentCancelled,
 			expectedStatus: StatusCancelled,
 		},
 		{

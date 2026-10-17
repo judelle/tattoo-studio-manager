@@ -235,65 +235,49 @@ func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appo
 			return
 		}
 
-		idx, found := appointment.FindIndexByID(
-			appointments,
-			scanner.Text(),
-		)
-		if !found {
-			fmt.Println("Запись не найдена")
-			continue
-		}
-
-		if appointments[idx].Status == appointment.StatusCancelled {
-			fmt.Println("Отменённую запись нельзя завершить")
-			continue
-		}
-
-		if appointments[idx].Status == appointment.StatusCompleted {
-			fmt.Println("Запись уже завершена")
-			continue
-		}
+		id := scanner.Text()
 
 		fmt.Println("Введите итоговую сумму: ")
 		scanner.Scan()
 
-		finalPrice, err := strconv.Atoi(scanner.Text())
+		price := scanner.Text()
+
+		finalPrice, err := strconv.Atoi(price)
 		if err != nil {
 			fmt.Println("Ошибка ввода суммы")
 			continue
 		}
 
-		if finalPrice < 0 {
+		completedAppointment, err := appointment.Complete(appointments, id, finalPrice)
+
+		switch {
+		case err == nil:
+			fmt.Println("Запись успешно завершена")
+		case errors.Is(err, appointment.ErrAppointmentNotFound):
+			fmt.Println("Запись не найдена")
+			continue
+		case errors.Is(err, appointment.ErrAppointmentCompleted):
+			fmt.Println("Запись уже завершена")
+			continue
+		case errors.Is(err, appointment.ErrAppointmentCancelled):
+			fmt.Println("Отменённую запись нельзя завершить")
+			continue
+		case errors.Is(err, appointment.ErrFinalPriceLessThanZero):
 			fmt.Println("Итоговая сумма не может быть меньше 0")
+			continue
+		default:
+			fmt.Println("Неизвестная ошибка")
 			continue
 		}
 
-		if finalPrice < appointments[idx].Deposit {
-			fmt.Println("Итоговая сумма меньше депозита. Вы уверены? Д/Н")
-			scanner.Scan()
-
-			answer := strings.TrimSpace(
-				strings.ToLower(scanner.Text()),
-			)
-
-			if answer != "д" {
-				continue
-			}
-		}
-
-		appointments[idx].FinalPrice = finalPrice
-		appointments[idx].Status = appointment.StatusCompleted
-
-		fmt.Println("Запись успешно завершена")
 		fmt.Printf(
 			"Планируемая стоимость: %d ₽\n",
-			appointments[idx].PlannedPrice,
+			completedAppointment.PlannedPrice,
 		)
 		fmt.Printf(
 			"Итоговая стоимость: %d ₽\n",
-			appointments[idx].FinalPrice,
+			completedAppointment.FinalPrice,
 		)
-
 		return
 	}
 }
@@ -315,7 +299,7 @@ func cancelAppointment(scanner *bufio.Scanner, appointments []appointment.Appoin
 		case errors.Is(err, appointment.ErrAppointmentNotFound):
 			fmt.Println("Запись не найдена")
 
-		case errors.Is(err, appointment.ErrAppointmentAlreadyCancelled):
+		case errors.Is(err, appointment.ErrAppointmentCancelled):
 			fmt.Println("Запись уже отменена")
 
 		case errors.Is(err, appointment.ErrAppointmentCompleted):
