@@ -176,20 +176,9 @@ func reschedulingAppointment(scanner *bufio.Scanner, appointments []appointment.
 			return
 		}
 
-		idx, ok := appointment.FindIndexByID(appointments, id)
-		if !ok {
-			fmt.Println("Запись не найдена")
-			continue
-		}
-
-		if appointments[idx].Status == appointment.StatusCompleted {
-			fmt.Println("Нельзя перенести выполненную запись")
-			continue
-		}
-
 		fmt.Println("Введите новую дату записи: ")
 		scanner.Scan()
-		date := scanner.Text()
+		dateValue := scanner.Text()
 
 		fmt.Println("Введите новое время записи: ")
 		scanner.Scan()
@@ -197,36 +186,40 @@ func reschedulingAppointment(scanner *bufio.Scanner, appointments []appointment.
 
 		startAt, err := time.ParseInLocation(
 			"02.01.2006 15:04",
-			date+" "+timeValue,
+			dateValue+" "+timeValue,
 			datetime.Moscow,
 		)
 		if err != nil {
-			fmt.Println("Дата и время введены некорректно")
+			fmt.Println("Некорректные дата или время")
 			continue
 		}
 
-		if startAt.Before(time.Now().In(datetime.Moscow)) {
-			fmt.Println("Запись не может быть перенесена в прошлое")
+		err = appointment.Reschedule(appointments, id, startAt)
+		switch {
+		case errors.Is(err, appointment.ErrAppointmentNotFound):
+			fmt.Println("Запись не найдена")
 			continue
-		}
-
-		if appointment.IsTimeTaken(appointments, startAt, appointments[idx].ID) {
+		case errors.Is(err, appointment.ErrAppointmentCompleted):
+			fmt.Println("Запись уже завершена")
+			continue
+		case errors.Is(err, appointment.ErrPastTimeReschedule):
+			fmt.Println("Невозможно перенести запись в прошлое")
+			continue
+		case errors.Is(err, appointment.ErrTimeTaken):
 			fmt.Println("Время уже занято")
 			continue
+		case err != nil:
+			fmt.Println("Неизвестная ошибка")
+			continue
 		}
-
-		if appointments[idx].Status == appointment.StatusCancelled {
-			appointments[idx].Status = appointment.StatusPlanned
-		}
-
-		appointments[idx].StartAt = startAt
 
 		fmt.Println("Запись успешно перенесена")
+
 		return
 	}
 }
 
-func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) {
+func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) { // рефакт
 	for {
 		fmt.Print("Введите ID записи для завершения или 0 для выхода: ")
 		scanner.Scan()
@@ -282,7 +275,7 @@ func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appo
 	}
 }
 
-func cancelAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) {
+func cancelAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) { // рефакт
 	for {
 		fmt.Print("Введите ID записи для отмены или 0 для выхода: ")
 		scanner.Scan()

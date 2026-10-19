@@ -2,6 +2,7 @@ package appointment
 
 import (
 	"sort"
+	"tattoo-studio/internal/datetime"
 	"time"
 )
 
@@ -137,4 +138,30 @@ func Complete(appointments []Appointment, id string, finalPrice int) (Appointmen
 	appointments[idx].Status = StatusCompleted
 
 	return appointments[idx], nil
+}
+
+func Reschedule(appointments []Appointment, id string, startAt time.Time) error {
+	idx, ok := FindIndexByID(appointments, id)
+	if !ok {
+		return ErrAppointmentNotFound
+	}
+
+	if appointments[idx].Status == StatusCompleted {
+		return ErrAppointmentCompleted
+	}
+
+	if startAt.Before(time.Now().In(datetime.Moscow)) {
+		return ErrPastTimeReschedule
+	}
+
+	if IsTimeTaken(appointments, startAt, appointments[idx].ID) {
+		return ErrTimeTaken
+	}
+
+	if appointments[idx].Status == StatusCancelled {
+		appointments[idx].Status = StatusPlanned
+	}
+
+	appointments[idx].StartAt = startAt
+	return nil
 }

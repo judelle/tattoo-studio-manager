@@ -908,3 +908,218 @@ func TestComplete(t *testing.T) {
 		})
 	}
 }
+
+func TestReschedule(t *testing.T) {
+	oldTime := time.Date(
+		2030,
+		time.January,
+		9,
+		15,
+		0,
+		0,
+		0,
+		time.UTC,
+	)
+	pastTime := time.Date(
+		2020,
+		time.January,
+		8,
+		15,
+		0,
+		0,
+		0,
+		time.UTC,
+	)
+	futureTime := time.Date(
+		2030,
+		time.January,
+		10,
+		15,
+		0,
+		0,
+		0,
+		time.UTC,
+	)
+
+	tests := []struct {
+		name            string
+		appointments    []Appointment
+		id              string
+		startAt         time.Time
+		expectedError   error
+		expectedStartAt time.Time
+		expectedStatus  Status
+	}{
+		{
+			name: "planned appointment can be rescheduled",
+			appointments: []Appointment{
+				{
+					ID:      "1",
+					Status:  StatusPlanned,
+					StartAt: oldTime,
+				},
+			},
+			id:              "1",
+			startAt:         futureTime,
+			expectedError:   nil,
+			expectedStartAt: futureTime,
+			expectedStatus:  StatusPlanned,
+		},
+		{
+			name: "cancelled appointment becomes planned after reschedule",
+			appointments: []Appointment{
+				{
+					ID:      "1",
+					Status:  StatusCancelled,
+					StartAt: oldTime,
+				},
+			},
+			id:              "1",
+			startAt:         futureTime,
+			expectedError:   nil,
+			expectedStartAt: futureTime,
+			expectedStatus:  StatusPlanned,
+		},
+		{
+			name: "completed appointment cannot be rescheduled",
+			appointments: []Appointment{
+				{
+					ID:      "1",
+					Status:  StatusCompleted,
+					StartAt: oldTime,
+				},
+			},
+			id:              "1",
+			startAt:         futureTime,
+			expectedError:   ErrAppointmentCompleted,
+			expectedStartAt: oldTime,
+			expectedStatus:  StatusCompleted,
+		},
+		{
+			name: "appointment not found",
+			appointments: []Appointment{
+				{
+					ID:      "1",
+					Status:  StatusCancelled,
+					StartAt: oldTime,
+				},
+			},
+			id:              "999",
+			startAt:         futureTime,
+			expectedError:   ErrAppointmentNotFound,
+			expectedStartAt: oldTime,
+			expectedStatus:  StatusCancelled,
+		},
+		{
+			name: "appointment cannot be rescheduled to the past",
+			appointments: []Appointment{
+				{
+					ID:      "1",
+					Status:  StatusCancelled,
+					StartAt: oldTime,
+				},
+			},
+			id:              "1",
+			startAt:         pastTime,
+			expectedError:   ErrPastTimeReschedule,
+			expectedStartAt: oldTime,
+			expectedStatus:  StatusCancelled,
+		},
+		{
+			name: "appointment cannot be rescheduled to occupied time",
+			appointments: []Appointment{
+				{
+					ID:      "1",
+					Status:  StatusCancelled,
+					StartAt: oldTime,
+				},
+				{
+					ID:      "2",
+					Status:  StatusPlanned,
+					StartAt: futureTime,
+				},
+			},
+			id:              "1",
+			startAt:         futureTime,
+			expectedError:   ErrTimeTaken,
+			expectedStartAt: oldTime,
+			expectedStatus:  StatusCancelled,
+		},
+		{
+			name:          "empty appointments returns not found",
+			appointments:  []Appointment{},
+			id:            "999",
+			startAt:       futureTime,
+			expectedError: ErrAppointmentNotFound,
+		},
+		{
+			name: "appointment can be rescheduled to its own time",
+			appointments: []Appointment{
+				{
+					ID:      "1",
+					Status:  StatusPlanned,
+					StartAt: futureTime,
+				},
+			},
+			id:              "1",
+			startAt:         futureTime,
+			expectedError:   nil,
+			expectedStartAt: futureTime,
+			expectedStatus:  StatusPlanned,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Reschedule(tt.appointments, tt.id, tt.startAt)
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf(
+					"expected error %v, got %v",
+					tt.expectedError,
+					err,
+				)
+			}
+
+			if err != nil {
+				if len(tt.appointments) > 0 {
+					if !tt.appointments[0].StartAt.Equal(tt.expectedStartAt) {
+						t.Errorf(
+							"expected startAt %v, got %v",
+							tt.expectedStartAt,
+							tt.appointments[0].StartAt,
+						)
+					}
+
+					if tt.appointments[0].Status != tt.expectedStatus {
+						t.Errorf(
+							"expected status %s, got %s",
+							tt.expectedStatus,
+							tt.appointments[0].Status,
+						)
+					}
+				}
+
+				return
+			}
+
+			if len(tt.appointments) == 0 {
+				t.Fatal("expected appointments slice not to be empty")
+			}
+
+			if !tt.appointments[0].StartAt.Equal(tt.expectedStartAt) {
+				t.Errorf(
+					"expected source appointment startAt %v, got %v",
+					tt.expectedStartAt,
+					tt.appointments[0].StartAt,
+				)
+			}
+
+			if tt.appointments[0].Status != tt.expectedStatus {
+				t.Errorf(
+					"expected source appointment status %s, got %s",
+					tt.expectedStatus,
+					tt.appointments[0].Status,
+				)
+			}
+		})
+	}
+}
