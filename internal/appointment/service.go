@@ -4,6 +4,8 @@ import (
 	"sort"
 	"tattoo-studio/internal/datetime"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func FindByID(appointments []Appointment, id string) (Appointment, bool) {
@@ -151,7 +153,7 @@ func Reschedule(appointments []Appointment, id string, startAt time.Time) error 
 	}
 
 	if startAt.Before(time.Now().In(datetime.Moscow)) {
-		return ErrPastTimeReschedule
+		return ErrStartTimeInPast
 	}
 
 	if IsTimeTaken(appointments, startAt, appointments[idx].ID) {
@@ -164,4 +166,28 @@ func Reschedule(appointments []Appointment, id string, startAt time.Time) error 
 
 	appointments[idx].StartAt = startAt
 	return nil
+}
+
+func Create(appointments []Appointment, input CreateInput) (Appointment, error) {
+	if input.StartAt.Before(time.Now()) {
+		return Appointment{}, ErrStartTimeInPast
+	}
+	if IsTimeTaken(appointments, input.StartAt, "") {
+		return Appointment{}, ErrTimeTaken
+	}
+	if input.PlannedPrice < 0 {
+		return Appointment{}, ErrPlannedPriceLessThanZero
+	}
+	if input.Deposit < 0 {
+		return Appointment{}, ErrDepositLessThanZero
+	}
+	return Appointment{
+		ID:           uuid.NewString(),
+		ClientID:     input.ClientID,
+		StartAt:      input.StartAt,
+		Description:  input.Description,
+		PlannedPrice: input.PlannedPrice,
+		Deposit:      input.Deposit,
+		Status:       StatusPlanned,
+	}, nil
 }

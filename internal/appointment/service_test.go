@@ -1021,7 +1021,7 @@ func TestReschedule(t *testing.T) {
 			},
 			id:              "1",
 			startAt:         pastTime,
-			expectedError:   ErrPastTimeReschedule,
+			expectedError:   ErrStartTimeInPast,
 			expectedStartAt: oldTime,
 			expectedStatus:  StatusCancelled,
 		},
@@ -1121,5 +1121,247 @@ func TestReschedule(t *testing.T) {
 				)
 			}
 		})
+	}
+
+}
+
+func TestCreate(t *testing.T) {
+	futureTime := time.Date(
+		2030,
+		time.January,
+		10,
+		15,
+		0,
+		0,
+		0,
+		time.UTC,
+	)
+	pastTime := time.Date(
+		2020,
+		time.January,
+		8,
+		15,
+		0,
+		0,
+		0,
+		time.UTC,
+	)
+	tests := []struct {
+		name           string
+		appointments   []Appointment
+		input          CreateInput
+		expectedError  error
+		expectedResult Appointment
+	}{
+		{
+			name:         "valid appointment can be created",
+			appointments: []Appointment{},
+			input: CreateInput{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 10000,
+				Deposit:      1500,
+			},
+			expectedError: nil,
+			expectedResult: Appointment{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 10000,
+				Deposit:      1500,
+				Status:       StatusPlanned,
+			},
+		},
+		{
+			name:         "appointment cannot be created in the past",
+			appointments: []Appointment{},
+			input: CreateInput{
+				ClientID:     "client-1",
+				StartAt:      pastTime,
+				Description:  "dragon",
+				PlannedPrice: 10000,
+				Deposit:      1500,
+			},
+			expectedError: ErrStartTimeInPast,
+		},
+		{
+			name: "appointment cannot be created at occupied time",
+			appointments: []Appointment{
+				{
+					ID:      "1",
+					StartAt: futureTime,
+					Status:  StatusPlanned,
+				},
+			},
+			input: CreateInput{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 10000,
+				Deposit:      1500,
+			},
+			expectedError: ErrTimeTaken,
+		},
+		{
+			name: "cancelled appointment does not occupy time",
+			appointments: []Appointment{
+				{
+					StartAt: futureTime,
+					Status:  StatusCancelled,
+				},
+			},
+			input: CreateInput{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 10000,
+				Deposit:      1500,
+			},
+			expectedError: nil,
+			expectedResult: Appointment{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 10000,
+				Deposit:      1500,
+				Status:       StatusPlanned,
+			},
+		},
+		{
+			name: "completed appointment does not occupy time",
+			appointments: []Appointment{
+				{
+					StartAt: futureTime,
+					Status:  StatusCompleted,
+				},
+			},
+			input: CreateInput{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 10000,
+				Deposit:      1500,
+			},
+			expectedError: nil,
+			expectedResult: Appointment{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 10000,
+				Deposit:      1500,
+				Status:       StatusPlanned,
+			},
+		},
+		{
+			name:         "negative planned price is rejected",
+			appointments: []Appointment{},
+			input: CreateInput{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: -10000,
+				Deposit:      1500,
+			},
+			expectedError: ErrPlannedPriceLessThanZero,
+		},
+		{
+			name:         "negative deposit is rejected",
+			appointments: []Appointment{},
+			input: CreateInput{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 10000,
+				Deposit:      -1500,
+			},
+			expectedError: ErrDepositLessThanZero,
+		},
+		{
+			name:         "zero planned price and zero deposit are allowed",
+			appointments: []Appointment{},
+			input: CreateInput{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 0,
+				Deposit:      0,
+			},
+			expectedError: nil,
+			expectedResult: Appointment{
+				ClientID:     "client-1",
+				StartAt:      futureTime,
+				Description:  "dragon",
+				PlannedPrice: 0,
+				Deposit:      0,
+				Status:       StatusPlanned,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			createdAppointment, err := Create(tt.appointments, tt.input)
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf("expected error %v, got %v",
+					tt.expectedError,
+					err)
+			}
+			if err != nil {
+				return
+			}
+
+			if createdAppointment.ID == "" {
+				t.Error("expected generated ID, got empty string")
+			}
+
+			if createdAppointment.ClientID != tt.expectedResult.ClientID {
+				t.Errorf(
+					"expected client ID %s, got %s",
+					tt.expectedResult.ClientID,
+					createdAppointment.ClientID,
+				)
+			}
+
+			if !createdAppointment.StartAt.Equal(tt.expectedResult.StartAt) {
+				t.Errorf(
+					"expected startAt %v, got %v",
+					tt.expectedResult.StartAt,
+					createdAppointment.StartAt,
+				)
+			}
+
+			if createdAppointment.Description != tt.expectedResult.Description {
+				t.Errorf(
+					"expected description %s, got %s",
+					tt.expectedResult.Description,
+					createdAppointment.Description,
+				)
+			}
+
+			if createdAppointment.PlannedPrice != tt.expectedResult.PlannedPrice {
+				t.Errorf(
+					"expected planned price %d, got %d",
+					tt.expectedResult.PlannedPrice,
+					createdAppointment.PlannedPrice,
+				)
+			}
+
+			if createdAppointment.Deposit != tt.expectedResult.Deposit {
+				t.Errorf(
+					"expected deposit %d, got %d",
+					tt.expectedResult.Deposit,
+					createdAppointment.Deposit,
+				)
+			}
+
+			if createdAppointment.Status != tt.expectedResult.Status {
+				t.Errorf(
+					"expected status %s, got %s",
+					tt.expectedResult.Status,
+					createdAppointment.Status,
+				)
+			}
+		})
+
 	}
 }
