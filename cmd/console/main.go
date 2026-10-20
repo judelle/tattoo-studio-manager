@@ -2,9 +2,10 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"os"
-	"strings"
 	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
 )
@@ -32,8 +33,15 @@ func main() {
 		fmt.Println("0 — Выход")
 		fmt.Print("Выберите действие: ")
 
-		scanner.Scan()
-		choice := strings.TrimSpace(strings.ToLower(scanner.Text()))
+		choice, err := readInput(scanner)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				fmt.Println("Ввод завершён")
+				return
+			}
+			fmt.Println("main error: read choice", err)
+			return
+		}
 		fmt.Println("-------------------")
 		switch choice {
 		case "1":
@@ -48,7 +56,15 @@ func main() {
 		case "5":
 			clients = deleteClientChoice(scanner, clients, appointments)
 		case "6":
-			newAppointment, ok := addAppointment(scanner, clients, appointments)
+			newAppointment, ok, err := addAppointment(scanner, clients, appointments)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+				fmt.Println("addappointment error: ", err)
+				return
+			}
 			if !ok {
 				fmt.Println("Запись не добавлена")
 				continue
@@ -56,17 +72,65 @@ func main() {
 			appointments = append(appointments, newAppointment)
 			fmt.Println("Запись успешно добавлена")
 		case "7":
-			printAppointmentByDate(scanner, appointments, clients)
+			err := printAppointmentByDate(scanner, appointments, clients)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+				fmt.Println("printAppointmentByDate error: ", err)
+				return
+			}
 		case "8":
-			reschedulingAppointment(scanner, appointments)
+			err := reschedulingAppointment(scanner, appointments)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+				fmt.Println("reschedulingAppointment error: ", err)
+				return
+			}
 		case "9":
-			completeAppointment(scanner, appointments)
+			err := completeAppointment(scanner, appointments)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+				fmt.Println("completeAppointment error: ", err)
+				return
+			}
 		case "10":
-			cancelAppointment(scanner, appointments)
+			err := cancelAppointment(scanner, appointments)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+				fmt.Println("cancelAppointment error: ", err)
+				return
+			}
 		case "11":
-			appointments = deleteAppointmentChoice(scanner, appointments, clients)
+			appointments, err = deleteAppointmentChoice(scanner, appointments, clients)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+				fmt.Println("deleteAppointmentChoice error: ", err)
+				return
+			}
 		case "12":
-			printClientHistory(scanner, appointments, clients)
+			err := printClientHistory(scanner, appointments, clients)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+				fmt.Println("printClientHistory error: ", err)
+				return
+			}
 		case "13":
 			printUpcoming(appointments, clients)
 		case "0":

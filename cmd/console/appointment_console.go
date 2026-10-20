@@ -6,20 +6,21 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
-	"strings"
 	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
 	"tattoo-studio/internal/datetime"
 	"time"
 )
 
-func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointments []appointment.Appointment) (appointment.Appointment, bool) {
+func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointments []appointment.Appointment) (appointment.Appointment, bool, error) { // Исправить ux
 	for {
 		fmt.Print("Введите ID клиента или 0 для выхода ")
-		scanner.Scan()
-		id := scanner.Text()
+		id, err := readInput(scanner)
+		if err != nil {
+			return appointment.Appointment{}, false, fmt.Errorf("read client ID: %w", err)
+		}
 		if id == "0" {
-			return appointment.Appointment{}, false
+			return appointment.Appointment{}, false, nil
 		}
 		foundClient, found := client.FindByID(clients, id)
 		if !found {
@@ -29,38 +30,51 @@ func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointment
 		clientID := foundClient.ID
 
 		fmt.Print("Введите дату записи: ")
-		scanner.Scan()
-		dateValue := scanner.Text()
+		dateValue, err := readInput(scanner)
+		if err != nil {
+			return appointment.Appointment{}, false, fmt.Errorf("read appointment date value: %w", err)
+		}
 		fmt.Print("Введите время записи: ")
-		scanner.Scan()
-		timeValue := scanner.Text()
+		timeValue, err := readInput(scanner)
+		if err != nil {
+			return appointment.Appointment{}, false, fmt.Errorf("read appointment time value: %w", err)
+		}
 		startAt, err := time.ParseInLocation(
 			"02.01.2006 15:04",
 			dateValue+" "+timeValue,
 			datetime.Moscow,
 		)
 		if err != nil {
-			fmt.Println("Некорректный ввод даты")
+			fmt.Println("Ошибка ввода даты")
 			continue
 		}
 
 		fmt.Print("Введите описание: ")
-		scanner.Scan()
-		description := strings.TrimSpace(scanner.Text())
 
-		fmt.Print("Введите ожидаему цену: ")
-		scanner.Scan()
-		plannedPrice, err := strconv.Atoi(strings.TrimSpace(scanner.Text()))
+		description, err := readInput(scanner)
 		if err != nil {
-			fmt.Println("Некорректный ввод планируемой цены")
+			return appointment.Appointment{}, false, fmt.Errorf("read appointment description: %w", err)
+		}
+		fmt.Print("Введите ожидаему цену: ")
+
+		plannedPriceInput, err := readInput(scanner)
+		if err != nil {
+			return appointment.Appointment{}, false, fmt.Errorf("read appointment planned price: %w", err)
+		}
+		plannedPrice, err := strconv.Atoi(plannedPriceInput)
+		if err != nil {
+			fmt.Println("Ошибка ввода планируемой цены")
 			continue
 		}
 
 		fmt.Print("Введите депозит: ")
-		scanner.Scan()
-		deposit, err := strconv.Atoi(strings.TrimSpace(scanner.Text()))
+		depositInput, err := readInput(scanner)
 		if err != nil {
-			fmt.Println("Некорректный ввод депозита")
+			return appointment.Appointment{}, false, fmt.Errorf("read appointment deposit: %w", err)
+		}
+		deposit, err := strconv.Atoi(depositInput)
+		if err != nil {
+			fmt.Println("Ошибка ввода депозита")
 			continue
 		}
 
@@ -77,26 +91,24 @@ func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointment
 		switch {
 		case errors.Is(err, appointment.ErrStartTimeInPast):
 			fmt.Println("Запись не может быть создана в прошлом")
-			return appointment.Appointment{}, false
+			continue
 
 		case errors.Is(err, appointment.ErrTimeTaken):
 			fmt.Println("Время уже занято")
-			return appointment.Appointment{}, false
+			continue
 
 		case errors.Is(err, appointment.ErrPlannedPriceLessThanZero):
 			fmt.Println("Цена не может быть меньше 0")
-			return appointment.Appointment{}, false
+			continue
 
 		case errors.Is(err, appointment.ErrDepositLessThanZero):
 			fmt.Println("Депозит не может быть меньше 0")
-			return appointment.Appointment{}, false
-
+			continue
 		case err != nil:
-			fmt.Println("Неизвестная ошибка")
-			return appointment.Appointment{}, false
+			return appointment.Appointment{}, false, fmt.Errorf("create appointment: %w", err)
 		}
 
-		return createdAppointment, true
+		return createdAppointment, true, nil
 	}
 }
 
@@ -120,15 +132,17 @@ func printAppointment(appointmentPrint appointment.Appointment, client client.Cl
 	}
 	fmt.Printf("Статус: %s\n", appointmentPrint.Status)
 	fmt.Println("-------------------")
-}
+} // datetime рефакт
 
-func printAppointmentByDate(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) {
+func printAppointmentByDate(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) error {
 	for {
 		fmt.Println("Введите дату или 0 для выхода: ")
-		scanner.Scan()
-		date := scanner.Text()
+		date, err := readInput(scanner)
+		if err != nil {
+			return fmt.Errorf("read appointments date: %w", err)
+		}
 		if date == "0" {
-			return
+			return nil
 		}
 		parsedDate, err := time.ParseInLocation("02.01.2006", date, datetime.Moscow)
 		if err != nil {
@@ -150,27 +164,33 @@ func printAppointmentByDate(scanner *bufio.Scanner, appointments []appointment.A
 			}
 			printAppointment(v, clientAtDate)
 		}
-		return
+		return nil
 	}
 }
 
-func reschedulingAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) { // рефакт
+func reschedulingAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) error {
 	for {
 		fmt.Println("Введите ID записи или 0 для выхода: ")
-		scanner.Scan()
-		id := scanner.Text()
+		id, err := readInput(scanner)
+		if err != nil {
+			return fmt.Errorf("read appointment ID: %w", err)
+		}
 
 		if id == "0" {
-			return
+			return nil
 		}
 
 		fmt.Println("Введите новую дату записи: ")
-		scanner.Scan()
-		dateValue := scanner.Text()
+		dateValue, err := readInput(scanner)
+		if err != nil {
+			return fmt.Errorf("read appointment date: %w", err)
+		}
 
 		fmt.Println("Введите новое время записи: ")
-		scanner.Scan()
-		timeValue := scanner.Text()
+		timeValue, err := readInput(scanner)
+		if err != nil {
+			return fmt.Errorf("read appointment time: %w", err)
+		}
 
 		startAt, err := time.ParseInLocation(
 			"02.01.2006 15:04",
@@ -197,31 +217,32 @@ func reschedulingAppointment(scanner *bufio.Scanner, appointments []appointment.
 			fmt.Println("Время уже занято")
 			continue
 		case err != nil:
-			fmt.Println("Неизвестная ошибка")
-			continue
+			return fmt.Errorf("reschedule appointment: %w", err)
 		}
 
 		fmt.Println("Запись успешно перенесена")
 
-		return
+		return nil
 	}
 }
 
-func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) { // рефакт
+func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) error {
 	for {
 		fmt.Print("Введите ID записи для завершения или 0 для выхода: ")
-		scanner.Scan()
-
-		if scanner.Text() == "0" {
-			return
+		id, err := readInput(scanner)
+		if err != nil {
+			return fmt.Errorf("read appointment ID: %w", err)
+		}
+		if id == "0" {
+			return nil
 		}
 
-		id := scanner.Text()
-
 		fmt.Println("Введите итоговую сумму: ")
-		scanner.Scan()
 
-		price := scanner.Text()
+		price, err := readInput(scanner)
+		if err != nil {
+			return fmt.Errorf("read appointment final price: %w", err)
+		}
 
 		finalPrice, err := strconv.Atoi(price)
 		if err != nil {
@@ -232,8 +253,6 @@ func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appo
 		completedAppointment, err := appointment.Complete(appointments, id, finalPrice)
 
 		switch {
-		case err == nil:
-			fmt.Println("Запись успешно завершена")
 		case errors.Is(err, appointment.ErrAppointmentNotFound):
 			fmt.Println("Запись не найдена")
 			continue
@@ -246,11 +265,10 @@ func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appo
 		case errors.Is(err, appointment.ErrFinalPriceLessThanZero):
 			fmt.Println("Итоговая сумма не может быть меньше 0")
 			continue
-		default:
-			fmt.Println("Неизвестная ошибка")
-			continue
+		case err != nil:
+			return fmt.Errorf("complete appointment: %w", err)
 		}
-
+		fmt.Println("Запись успешно завершена")
 		fmt.Printf(
 			"Планируемая стоимость: %d ₽\n",
 			completedAppointment.PlannedPrice,
@@ -259,55 +277,55 @@ func completeAppointment(scanner *bufio.Scanner, appointments []appointment.Appo
 			"Итоговая стоимость: %d ₽\n",
 			completedAppointment.FinalPrice,
 		)
-		return
+		return nil
 	}
 }
 
-func cancelAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) { // рефакт
+func cancelAppointment(scanner *bufio.Scanner, appointments []appointment.Appointment) error {
 	for {
 		fmt.Print("Введите ID записи для отмены или 0 для выхода: ")
-		scanner.Scan()
-
-		id := scanner.Text()
-
+		id, err := readInput(scanner)
+		if err != nil {
+			return fmt.Errorf("read appointment ID: %w", err)
+		}
 		if id == "0" {
-			return
+			return nil
 		}
 
-		err := appointment.Cancel(appointments, id)
+		err = appointment.Cancel(appointments, id)
 
 		switch {
 		case errors.Is(err, appointment.ErrAppointmentNotFound):
 			fmt.Println("Запись не найдена")
-
+			continue
 		case errors.Is(err, appointment.ErrAppointmentCancelled):
 			fmt.Println("Запись уже отменена")
-
+			continue
 		case errors.Is(err, appointment.ErrAppointmentCompleted):
 			fmt.Println("Завершённую запись нельзя отменить")
-
+			continue
 		case err != nil:
-			fmt.Println("Неизвестная ошибка")
-
-		default:
-			fmt.Println("Запись успешно отменена")
-			return
+			return fmt.Errorf("cancel appointment: %w", err)
 		}
+		fmt.Println("Запись успешно отменена")
+		return nil
 	}
 }
 
-func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) []appointment.Appointment {
+func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) ([]appointment.Appointment, error) {
 	for {
 		fmt.Print("Введите ID записи для удаления или 0 для выхода: ")
-		scanner.Scan()
-
-		if scanner.Text() == "0" {
-			return appointments
+		id, err := readInput(scanner)
+		if err != nil {
+			return appointments, fmt.Errorf("read appointment ID: %w", err)
+		}
+		if id == "0" {
+			return appointments, nil
 		}
 
 		idx, found := appointment.FindIndexByID(
 			appointments,
-			scanner.Text(),
+			id,
 		)
 		if !found {
 			fmt.Println("Запись не найдена")
@@ -339,60 +357,79 @@ func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.
 			fmt.Println("0 — Выход")
 			fmt.Print("Выберите действие: ")
 
-			scanner.Scan()
-			deleteChoice := strings.TrimSpace(strings.ToLower(scanner.Text()))
-			fmt.Println("-------------------")
+			choice, err := readInput(scanner)
+			if err != nil {
+				return appointments, fmt.Errorf("read choice: %w", err)
+			}
 
-			switch deleteChoice {
+			switch choice {
 			case "1":
 				fmt.Println("Вы уверены?")
 				fmt.Println("1 — Да")
 				fmt.Println("0 — Нет")
-				scanner.Scan()
-				if strings.TrimSpace(scanner.Text()) == "1" {
+
+				confirmation, err := readInput(scanner)
+				if err != nil {
+					return appointments, fmt.Errorf("read confirmation: %w", err)
+				}
+
+				switch confirmation {
+				case "1":
 					appointments = slices.Delete(appointments, idx, idx+1)
 					fmt.Println("Запись удалена")
-					return appointments
+					return appointments, nil
+
+				case "0":
+					fmt.Println("Удаление отменено")
+					continue
+
+				default:
+					fmt.Println("Неизвестная команда")
 				}
+
 			case "0":
-				return appointments
+				return appointments, nil
+
 			default:
 				fmt.Println("Неизвестная команда")
 			}
 		}
 	}
-}
+} // Рефакт
 
-func printClientHistory(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) {
+func printClientHistory(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) error {
 	for {
 		fmt.Print("Введите ID клиента что бы увидеть историю сеансов или 0 для выхода: ")
-		scanner.Scan()
-
-		if scanner.Text() == "0" {
-			return
+		clientID, err := readInput(scanner)
+		if err != nil {
+			return fmt.Errorf("read client ID: %w", err)
 		}
-		clientId := scanner.Text()
 
-		client, isFound := client.FindByID(clients, clientId)
+		if clientID == "0" {
+			return nil
+		}
+
+		foundClient, isFound := client.FindByID(clients, clientID)
 		if !isFound {
 			fmt.Println("Клиент не найден")
 			continue
 		}
 
-		clientHistory := appointment.FindByClientID(appointments, client.ID)
+		clientHistory := appointment.FindByClientID(appointments, foundClient.ID)
 
 		if len(clientHistory) == 0 {
 			fmt.Println("У клиента еще нет записей")
+			return nil
 		}
 		for _, v := range clientHistory {
-			printAppointment(v, client)
+			printAppointment(v, foundClient)
 		}
-		return
+		return nil
 	}
 }
 
 func printUpcoming(appointments []appointment.Appointment, clients []client.Client) {
-	upcomingAppointments := appointment.FindUpcoming(appointments, time.Now().In(datetime.Moscow))
+	upcomingAppointments := appointment.FindUpcoming(appointments, time.Now())
 	if len(upcomingAppointments) == 0 {
 		fmt.Println("Ближайших записей нет")
 		return
