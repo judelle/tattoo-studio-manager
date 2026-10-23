@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
@@ -312,15 +311,17 @@ func cancelAppointment(scanner *bufio.Scanner, appointments []appointment.Appoin
 func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) ([]appointment.Appointment, error) {
 	for {
 		fmt.Print("Введите ID записи для удаления или 0 для выхода: ")
+
 		id, err := readInput(scanner)
 		if err != nil {
 			return appointments, fmt.Errorf("read appointment ID: %w", err)
 		}
+
 		if id == "0" {
 			return appointments, nil
 		}
 
-		idx, found := appointment.FindIndexByID(
+		foundAppointment, found := appointment.FindByID(
 			appointments,
 			id,
 		)
@@ -328,26 +329,18 @@ func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.
 			fmt.Println("Запись не найдена")
 			continue
 		}
-		if appointments[idx].Status == appointment.StatusCompleted {
-			fmt.Println("Нельзя удалить завершённую запись")
-			continue
-		}
 
-		if appointments[idx].Status == appointment.StatusCancelled {
-			fmt.Println("Нельзя удалить отменённую запись")
-			continue
-		}
 		foundClient, found := client.FindByID(
 			clients,
-			appointments[idx].ClientID,
+			foundAppointment.ClientID,
 		)
-
 		if !found {
 			fmt.Println("Клиент записи не найден")
 			continue
 		}
 
-		printAppointment(appointments[idx], foundClient)
+		printAppointment(foundAppointment, foundClient)
+
 		for {
 			fmt.Println()
 			fmt.Println("1 — Удалить запись")
@@ -356,7 +349,10 @@ func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.
 
 			choice, err := readInput(scanner)
 			if err != nil {
-				return appointments, fmt.Errorf("read choice: %w", err)
+				return appointments, fmt.Errorf(
+					"read delete appointment choice: %w",
+					err,
+				)
 			}
 
 			switch choice {
@@ -367,14 +363,41 @@ func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.
 
 				confirmation, err := readInput(scanner)
 				if err != nil {
-					return appointments, fmt.Errorf("read confirmation: %w", err)
+					return appointments, fmt.Errorf(
+						"read delete appointment confirmation: %w",
+						err,
+					)
 				}
 
 				switch confirmation {
 				case "1":
-					appointments = slices.Delete(appointments, idx, idx+1)
+					afterDelete, err := appointment.Delete(
+						appointments,
+						id,
+					)
+
+					switch {
+					case errors.Is(err, appointment.ErrAppointmentNotFound):
+						fmt.Println("Запись не найдена")
+						return appointments, nil
+
+					case errors.Is(err, appointment.ErrAppointmentCompleted):
+						fmt.Println("Нельзя удалить завершённую запись")
+						return appointments, nil
+
+					case errors.Is(err, appointment.ErrAppointmentCancelled):
+						fmt.Println("Нельзя удалить отменённую запись")
+						return appointments, nil
+
+					case err != nil:
+						return appointments, fmt.Errorf(
+							"delete appointment: %w",
+							err,
+						)
+					}
+
 					fmt.Println("Запись удалена")
-					return appointments, nil
+					return afterDelete, nil
 
 				case "0":
 					fmt.Println("Удаление отменено")
@@ -392,7 +415,7 @@ func deleteAppointmentChoice(scanner *bufio.Scanner, appointments []appointment.
 			}
 		}
 	}
-} // Рефакт
+}
 
 func printClientHistory(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) error {
 	for {

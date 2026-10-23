@@ -1365,3 +1365,159 @@ func TestCreate(t *testing.T) {
 
 	}
 }
+
+func TestDelete(t *testing.T) {
+	tests := []struct {
+		name            string
+		appointments    []Appointment
+		id              string
+		wantErr         error
+		wantLen         int
+		wantRemainingID string
+	}{
+		{
+			name: "delete planned appointment",
+			appointments: []Appointment{
+				{
+					ID:     "1",
+					Status: StatusPlanned,
+				},
+				{
+					ID:     "2",
+					Status: StatusPlanned,
+				},
+			},
+			id:              "1",
+			wantLen:         1,
+			wantRemainingID: "2",
+		},
+		{
+			name: "appointment not found",
+			appointments: []Appointment{
+				{
+					ID:     "1",
+					Status: StatusPlanned,
+				},
+			},
+			id:      "999",
+			wantErr: ErrAppointmentNotFound,
+			wantLen: 1,
+		},
+		{
+			name: "completed appointment cannot be deleted",
+			appointments: []Appointment{
+				{
+					ID:     "1",
+					Status: StatusCompleted,
+				},
+			},
+			id:      "1",
+			wantErr: ErrAppointmentCompleted,
+			wantLen: 1,
+		},
+		{
+			name: "cancelled appointment cannot be deleted",
+			appointments: []Appointment{
+				{
+					ID:     "1",
+					Status: StatusCancelled,
+				},
+			},
+			id:      "1",
+			wantErr: ErrAppointmentCancelled,
+			wantLen: 1,
+		},
+		{
+			name:         "empty appointments",
+			appointments: []Appointment{},
+			id:           "1",
+			wantErr:      ErrAppointmentNotFound,
+			wantLen:      0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Delete(
+				tt.appointments,
+				tt.id,
+			)
+
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf(
+					"Delete() error = %v, want %v",
+					err,
+					tt.wantErr,
+				)
+			}
+
+			if len(got) != tt.wantLen {
+				t.Fatalf(
+					"Delete() len = %d, want %d",
+					len(got),
+					tt.wantLen,
+				)
+			}
+
+			if tt.wantRemainingID != "" {
+				if got[0].ID != tt.wantRemainingID {
+					t.Errorf(
+						"Delete() remaining ID = %q, want %q",
+						got[0].ID,
+						tt.wantRemainingID,
+					)
+				}
+			}
+		})
+	}
+}
+
+func TestDeleteDoesNotModifyAppointmentOnError(t *testing.T) {
+	appointments := []Appointment{
+		{
+			ID:         "1",
+			Status:     StatusCompleted,
+			FinalPrice: 5000,
+		},
+	}
+
+	got, err := Delete(appointments, "1")
+
+	if !errors.Is(err, ErrAppointmentCompleted) {
+		t.Fatalf(
+			"Delete() error = %v, want %v",
+			err,
+			ErrAppointmentCompleted,
+		)
+	}
+
+	if len(got) != 1 {
+		t.Fatalf(
+			"Delete() len = %d, want 1",
+			len(got),
+		)
+	}
+
+	if got[0].ID != "1" {
+		t.Errorf(
+			"Delete() ID = %q, want %q",
+			got[0].ID,
+			"1",
+		)
+	}
+
+	if got[0].Status != StatusCompleted {
+		t.Errorf(
+			"Delete() Status = %q, want %q",
+			got[0].Status,
+			StatusCompleted,
+		)
+	}
+
+	if got[0].FinalPrice != 5000 {
+		t.Errorf(
+			"Delete() FinalPrice = %d, want 5000",
+			got[0].FinalPrice,
+		)
+	}
+}

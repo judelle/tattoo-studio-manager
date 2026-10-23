@@ -1,6 +1,7 @@
 package appointment
 
 import (
+	"slices"
 	"sort"
 	"tattoo-studio/internal/datetime"
 	"time"
@@ -190,4 +191,27 @@ func Create(appointments []Appointment, input CreateInput) (Appointment, error) 
 		Deposit:      input.Deposit,
 		Status:       StatusPlanned,
 	}, nil
+}
+
+func Delete(appointments []Appointment, id string) ([]Appointment, error) {
+	idx, found := FindIndexByID(appointments, id)
+	if !found {
+		return appointments, ErrAppointmentNotFound
+	}
+
+	switch appointments[idx].Status {
+	case StatusCompleted:
+		return appointments, ErrAppointmentCompleted
+
+	case StatusCancelled:
+		return appointments, ErrAppointmentCancelled
+	}
+
+	appointments = slices.Delete(
+		appointments,
+		idx,
+		idx+1,
+	)
+
+	return appointments, nil
 }
