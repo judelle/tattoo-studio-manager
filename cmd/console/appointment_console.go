@@ -112,7 +112,7 @@ func printAppointment(appointmentPrint appointment.Appointment, client client.Cl
 	fmt.Println("ID записи:", appointmentPrint.ID)
 	fmt.Println(
 		"Дата и время:",
-		appointmentPrint.StartAt.Format("02.01.2006 15:04"),
+		appointmentPrint.StartAt.In(datetime.Moscow).Format("02.01.2006 15:04"),
 	)
 	fmt.Printf("Клиент: %s\n", client.Name)
 	if !client.IsAdult {
@@ -128,7 +128,7 @@ func printAppointment(appointmentPrint appointment.Appointment, client client.Cl
 	}
 	fmt.Printf("Статус: %s\n", appointmentPrint.Status)
 	fmt.Println("-------------------")
-} // datetime рефакт
+}
 
 func printAppointmentByDate(scanner *bufio.Scanner, appointments []appointment.Appointment, clients []client.Client) error {
 	for {

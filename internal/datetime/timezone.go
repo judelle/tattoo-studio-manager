@@ -2,6 +2,7 @@ package datetime
 
 import (
 	"time"
+	_ "time/tzdata"
 )
 
 var Moscow = mustLoadLocation("Europe/Moscow")

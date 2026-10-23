@@ -910,36 +910,20 @@ func TestComplete(t *testing.T) {
 }
 
 func TestReschedule(t *testing.T) {
-	oldTime := time.Date(
-		2030,
-		time.January,
-		9,
-		15,
+	now := time.Date(
+		2026,
+		time.October,
+		23,
+		12,
 		0,
 		0,
 		0,
 		time.UTC,
 	)
-	pastTime := time.Date(
-		2020,
-		time.January,
-		8,
-		15,
-		0,
-		0,
-		0,
-		time.UTC,
-	)
-	futureTime := time.Date(
-		2030,
-		time.January,
-		10,
-		15,
-		0,
-		0,
-		0,
-		time.UTC,
-	)
+
+	oldTime := now.Add(2 * time.Hour)
+	pastTime := now.Add(-1 * time.Hour)
+	futureTime := now.Add(24 * time.Hour)
 
 	tests := []struct {
 		name            string
@@ -1068,9 +1052,16 @@ func TestReschedule(t *testing.T) {
 			expectedStatus:  StatusPlanned,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Reschedule(tt.appointments, tt.id, tt.startAt)
+			err := rescheduleAt(
+				tt.appointments,
+				tt.id,
+				tt.startAt,
+				now,
+			)
+
 			if !errors.Is(err, tt.expectedError) {
 				t.Fatalf(
 					"expected error %v, got %v",
@@ -1122,30 +1113,23 @@ func TestReschedule(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func TestCreate(t *testing.T) {
-	futureTime := time.Date(
-		2030,
-		time.January,
-		10,
-		15,
+	now := time.Date(
+		2026,
+		time.October,
+		23,
+		12,
 		0,
 		0,
 		0,
 		time.UTC,
 	)
-	pastTime := time.Date(
-		2020,
-		time.January,
-		8,
-		15,
-		0,
-		0,
-		0,
-		time.UTC,
-	)
+
+	futureTime := now.Add(24 * time.Hour)
+	pastTime := now.Add(-1 * time.Hour)
+
 	tests := []struct {
 		name           string
 		appointments   []Appointment
@@ -1207,6 +1191,7 @@ func TestCreate(t *testing.T) {
 			name: "cancelled appointment does not occupy time",
 			appointments: []Appointment{
 				{
+					ID:      "1",
 					StartAt: futureTime,
 					Status:  StatusCancelled,
 				},
@@ -1232,6 +1217,7 @@ func TestCreate(t *testing.T) {
 			name: "completed appointment does not occupy time",
 			appointments: []Appointment{
 				{
+					ID:      "1",
 					StartAt: futureTime,
 					Status:  StatusCompleted,
 				},
@@ -1298,14 +1284,23 @@ func TestCreate(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			createdAppointment, err := Create(tt.appointments, tt.input)
+			createdAppointment, err := createAt(
+				tt.appointments,
+				tt.input,
+				now,
+			)
+
 			if !errors.Is(err, tt.expectedError) {
-				t.Fatalf("expected error %v, got %v",
+				t.Fatalf(
+					"expected error %v, got %v",
 					tt.expectedError,
-					err)
+					err,
+				)
 			}
+
 			if err != nil {
 				return
 			}
@@ -1362,7 +1357,6 @@ func TestCreate(t *testing.T) {
 				)
 			}
 		})
-
 	}
 }
 

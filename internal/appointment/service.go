@@ -31,10 +31,13 @@ func FindIndexByID(appointments []Appointment, id string) (int, bool) {
 
 func FindByDate(appointments []Appointment, startAt time.Time) []Appointment {
 	result := make([]Appointment, 0)
+
+	targetDate := startAt.In(datetime.Moscow)
+
 	for _, appointment := range appointments {
-		if appointment.StartAt.Day() == startAt.Day() &&
-			appointment.StartAt.Month() == startAt.Month() &&
-			appointment.StartAt.Year() == startAt.Year() {
+		if appointment.StartAt.Day() == targetDate.Day() &&
+			appointment.StartAt.Month() == targetDate.Month() &&
+			appointment.StartAt.Year() == targetDate.Year() {
 			result = append(result, appointment)
 		}
 	}
@@ -144,6 +147,10 @@ func Complete(appointments []Appointment, id string, finalPrice int) (Appointmen
 }
 
 func Reschedule(appointments []Appointment, id string, startAt time.Time) error {
+	return rescheduleAt(appointments, id, startAt, time.Now())
+}
+
+func rescheduleAt(appointments []Appointment, id string, startAt time.Time, now time.Time) error {
 	idx, ok := FindIndexByID(appointments, id)
 	if !ok {
 		return ErrAppointmentNotFound
@@ -153,7 +160,7 @@ func Reschedule(appointments []Appointment, id string, startAt time.Time) error 
 		return ErrAppointmentCompleted
 	}
 
-	if startAt.Before(time.Now().In(datetime.Moscow)) {
+	if startAt.Before(now) {
 		return ErrStartTimeInPast
 	}
 
@@ -166,22 +173,31 @@ func Reschedule(appointments []Appointment, id string, startAt time.Time) error 
 	}
 
 	appointments[idx].StartAt = startAt
+
 	return nil
 }
 
 func Create(appointments []Appointment, input CreateInput) (Appointment, error) {
-	if input.StartAt.Before(time.Now()) {
+	return createAt(appointments, input, time.Now())
+}
+
+func createAt(appointments []Appointment, input CreateInput, now time.Time) (Appointment, error) {
+	if input.StartAt.Before(now) {
 		return Appointment{}, ErrStartTimeInPast
 	}
+
 	if IsTimeTaken(appointments, input.StartAt, "") {
 		return Appointment{}, ErrTimeTaken
 	}
+
 	if input.PlannedPrice < 0 {
 		return Appointment{}, ErrPlannedPriceLessThanZero
 	}
+
 	if input.Deposit < 0 {
 		return Appointment{}, ErrDepositLessThanZero
 	}
+
 	return Appointment{
 		ID:           uuid.NewString(),
 		ClientID:     input.ClientID,
