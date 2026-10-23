@@ -7,6 +7,7 @@ import (
 	"strings"
 	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
+	"tattoo-studio/internal/studio"
 )
 
 func addClient(scanner *bufio.Scanner, clients []client.Client) (client.Client, bool, error) {
@@ -283,23 +284,23 @@ func changeClient(scanner *bufio.Scanner, clients []client.Client) error {
 func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client, appointments []appointment.Appointment) ([]client.Client, error) {
 	for {
 		fmt.Print("Введите ID клиента для удаления или 0 для выхода: ")
+
 		id, err := readInput(scanner)
 		if err != nil {
 			return clients, fmt.Errorf("read client ID: %w", err)
 		}
+
 		if id == "0" {
 			return clients, nil
 		}
-		index, isFound := client.FindIndexByID(clients, id)
-		if !isFound {
-			fmt.Printf("клиент с ID %s не найден\n", id)
+
+		foundClient, found := client.FindByID(clients, id)
+		if !found {
+			fmt.Printf("Клиент с ID %s не найден\n", id)
 			continue
 		}
-		printClient(clients[index])
-		if appointment.HasAppointmentsForClient(appointments, clients[index].ID) {
-			fmt.Println("Нельзя удалить клиента, у него есть история записей")
-			continue
-		}
+
+		printClient(foundClient)
 
 		for {
 			fmt.Println()
@@ -309,7 +310,10 @@ func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client, appoint
 
 			deleteChoice, err := readInput(scanner)
 			if err != nil {
-				return clients, fmt.Errorf("read delete choice : %w", err)
+				return clients, fmt.Errorf(
+					"read delete client choice: %w",
+					err,
+				)
 			}
 
 			switch deleteChoice {
@@ -320,19 +324,36 @@ func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client, appoint
 
 				confirmation, err := readInput(scanner)
 				if err != nil {
-					return clients, fmt.Errorf("read delete confirmation: %w", err)
+					return clients, fmt.Errorf(
+						"read delete client confirmation: %w",
+						err,
+					)
 				}
 
 				switch confirmation {
 				case "1":
-					afterDelete, err := client.Delete(clients, id)
-					if err != nil {
-						if errors.Is(err, client.ErrClientNotFound) {
-							fmt.Println("Клиент не найден")
-							return clients, nil
-						}
+					afterDelete, err := studio.DeleteClient(
+						clients,
+						appointments,
+						id,
+					)
 
-						return clients, fmt.Errorf("delete client: %w", err)
+					switch {
+					case errors.Is(err, client.ErrClientNotFound):
+						fmt.Println("Клиент не найден")
+						return clients, nil
+
+					case errors.Is(err, studio.ErrClientHasAppointments):
+						fmt.Println(
+							"Нельзя удалить клиента, у него есть история записей",
+						)
+						return clients, nil
+
+					case err != nil:
+						return clients, fmt.Errorf(
+							"delete client: %w",
+							err,
+						)
 					}
 
 					fmt.Println("Клиент удалён")
@@ -345,8 +366,10 @@ func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client, appoint
 				default:
 					fmt.Println("Неизвестная команда")
 				}
+
 			case "0":
 				return clients, nil
+
 			default:
 				fmt.Println("Неизвестная команда")
 			}
