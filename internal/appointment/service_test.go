@@ -1515,3 +1515,28 @@ func TestDeleteDoesNotModifyAppointmentOnError(t *testing.T) {
 		)
 	}
 }
+
+func TestIsTimeTakenDoesNotIgnoreEmptyID(t *testing.T) {
+	startAt := time.Date(
+		2026,
+		time.October,
+		24,
+		12,
+		0,
+		0,
+		0,
+		time.UTC,
+	)
+
+	appointments := []Appointment{
+		{
+			ID:      "",
+			StartAt: startAt,
+			Status:  StatusPlanned,
+		},
+	}
+
+	if !IsTimeTaken(appointments, startAt, "") {
+		t.Fatal("expected time to be taken")
+	}
+}

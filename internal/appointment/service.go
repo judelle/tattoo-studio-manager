@@ -50,13 +50,12 @@ func FindByDate(appointments []Appointment, startAt time.Time) []Appointment {
 }
 
 func IsTimeTaken(appointments []Appointment, startAt time.Time, ignoreID string) bool {
-	for _, appointment := range appointments {
-		if appointment.ID == ignoreID {
+	for _, a := range appointments {
+		if ignoreID != "" && a.ID == ignoreID {
 			continue
 		}
 
-		if appointment.Status == StatusPlanned &&
-			appointment.StartAt.Equal(startAt) {
+		if a.Status == StatusPlanned && a.StartAt.Equal(startAt) {
 			return true
 		}
 	}
