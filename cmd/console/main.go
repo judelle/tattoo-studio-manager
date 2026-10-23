@@ -39,22 +39,61 @@ func main() {
 				fmt.Println("Ввод завершён")
 				return
 			}
-			fmt.Println("main error: read choice", err)
+			fmt.Println("main error: read choice:", err)
 			return
 		}
 		fmt.Println("-------------------")
 		switch choice {
 		case "1":
-			newClient := addClient(scanner, clients)
+			newClient, ok, err := addClient(scanner, clients)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+				fmt.Println("addClient error:", err)
+				return
+			}
+			if !ok {
+				fmt.Println("Клиент не добавлен")
+				continue
+			}
 			clients = append(clients, newClient)
 		case "2":
 			printClients(clients)
 		case "3":
-			findClient(scanner, clients)
+			err := findClient(scanner, clients)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+
+				fmt.Println("findClient error:", err)
+				return
+			}
 		case "4":
-			changeClient(scanner, clients)
+			err := changeClient(scanner, clients)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+
+				fmt.Println("changeClient error:", err)
+				return
+			}
 		case "5":
-			clients = deleteClientChoice(scanner, clients, appointments)
+			clients, err = deleteClientChoice(scanner, clients, appointments)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					fmt.Println("Ввод завершён")
+					return
+				}
+
+				fmt.Println("deleteClientChoice error:", err)
+				return
+			}
 		case "6":
 			newAppointment, ok, err := addAppointment(scanner, clients, appointments)
 			if err != nil {
@@ -62,7 +101,7 @@ func main() {
 					fmt.Println("Ввод завершён")
 					return
 				}
-				fmt.Println("addappointment error: ", err)
+				fmt.Println("addappointment error:", err)
 				return
 			}
 			if !ok {
@@ -78,7 +117,7 @@ func main() {
 					fmt.Println("Ввод завершён")
 					return
 				}
-				fmt.Println("printAppointmentByDate error: ", err)
+				fmt.Println("printAppointmentByDate error:", err)
 				return
 			}
 		case "8":
@@ -88,7 +127,7 @@ func main() {
 					fmt.Println("Ввод завершён")
 					return
 				}
-				fmt.Println("reschedulingAppointment error: ", err)
+				fmt.Println("reschedulingAppointment error:", err)
 				return
 			}
 		case "9":
@@ -98,7 +137,7 @@ func main() {
 					fmt.Println("Ввод завершён")
 					return
 				}
-				fmt.Println("completeAppointment error: ", err)
+				fmt.Println("completeAppointment error:", err)
 				return
 			}
 		case "10":
@@ -108,7 +147,7 @@ func main() {
 					fmt.Println("Ввод завершён")
 					return
 				}
-				fmt.Println("cancelAppointment error: ", err)
+				fmt.Println("cancelAppointment error:", err)
 				return
 			}
 		case "11":
@@ -118,7 +157,7 @@ func main() {
 					fmt.Println("Ввод завершён")
 					return
 				}
-				fmt.Println("deleteAppointmentChoice error: ", err)
+				fmt.Println("deleteAppointmentChoice error:", err)
 				return
 			}
 		case "12":
@@ -128,7 +167,7 @@ func main() {
 					fmt.Println("Ввод завершён")
 					return
 				}
-				fmt.Println("printClientHistory error: ", err)
+				fmt.Println("printClientHistory error:", err)
 				return
 			}
 		case "13":

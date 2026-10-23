@@ -2,75 +2,75 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
-
-	"github.com/google/uuid"
 )
 
-func addClient(scanner *bufio.Scanner, clients []client.Client) client.Client {
-	name := ""
+func addClient(scanner *bufio.Scanner, clients []client.Client) (client.Client, bool, error) {
 	for {
-		fmt.Print("Введите имя: ")
-		scanner.Scan()
-		if name = strings.TrimSpace(scanner.Text()); name == "" {
-			fmt.Println("Имя не может быть пустым")
-			continue
+		fmt.Print("Введите имя или 0 для выхода: ")
+		name, err := readInput(scanner)
+		if err != nil {
+			return client.Client{}, false, fmt.Errorf("read client name: %w", err)
 		}
-		break
-	}
+		if name == "0" {
+			return client.Client{}, false, nil
+		}
 
-	isAdult := false
-	for {
 		fmt.Print("Клиент совершеннолетний? Д/Н: ")
-		scanner.Scan()
-		adultInput := strings.TrimSpace(strings.ToLower(scanner.Text()))
+
+		adultInput, err := readInput(scanner)
+		if err != nil {
+			return client.Client{}, false, fmt.Errorf("read client adult input: %w", err)
+		}
+		adultInput = strings.ToLower(adultInput)
+		isAdult := false
 		if adultInput == "д" {
 			isAdult = true
-			break
-		}
-		if adultInput == "н" {
-			break
-		}
-		fmt.Println("Некорректный ввод")
-
-	}
-
-	phone := ""
-	for {
-		fmt.Print("Введите номер телефона: ")
-		scanner.Scan()
-		if phone = strings.TrimSpace(scanner.Text()); phone == "" {
-			fmt.Println("Номер телефона не может быть пустым")
+		} else if adultInput != "н" {
+			fmt.Println("Некорректный ввод")
 			continue
-		} else {
-			client, isFound := client.FindByPhone(clients, phone)
-			if !isFound {
-				break
-			} else {
-				fmt.Printf("Номер %s принадлежит клиенту: %s, с ID: %s\n",
-					phone,
-					client.Name,
-					client.ID)
-			}
 		}
-	}
 
-	fmt.Print("Введите соц. сеть: ")
-	scanner.Scan()
-	social := strings.TrimSpace(scanner.Text())
+		fmt.Print("Введите номер телефона: ")
+		phone, err := readInput(scanner)
+		if err != nil {
+			return client.Client{}, false, fmt.Errorf("read client phone: %w", err)
+		}
 
-	client := client.Client{
-		ID:      uuid.NewString(),
-		Name:    name,
-		IsAdult: isAdult,
-		Phone:   phone,
-		Social:  social,
+		fmt.Print("Введите соц. сеть: ")
+		social, err := readInput(scanner)
+		if err != nil {
+			return client.Client{}, false, fmt.Errorf("read client social: %w", err)
+		}
+		input := client.CreateInput{
+			Name:    name,
+			IsAdult: isAdult,
+			Phone:   phone,
+			Social:  social,
+		}
+		createdClient, err := client.Create(clients, input)
+
+		switch {
+		case errors.Is(err, client.ErrNameRequired):
+			fmt.Println("Имя не может быть пустым")
+			continue
+		case errors.Is(err, client.ErrPhoneRequired):
+			fmt.Println("Номер не может быть пустым")
+			continue
+		case errors.Is(err, client.ErrPhoneAlreadyExists):
+			fmt.Printf("Номер телефона %s занят пользователем: %s, с ID %s\n", createdClient.Phone, createdClient.Name, createdClient.ID)
+			continue
+		case err != nil:
+			return client.Client{}, false, fmt.Errorf("create client: %w", err)
+		}
+
+		fmt.Println("Клиент успешно добавлен")
+		return createdClient, true, nil
 	}
-	return client
 }
 
 func printClients(clients []client.Client) {
@@ -99,128 +99,200 @@ func printClient(client client.Client) {
 	fmt.Println("Соц. сеть:", client.Social)
 }
 
-func findClient(scanner *bufio.Scanner, clients []client.Client) {
-	fmt.Print("Введите ID клиента: ")
-	scanner.Scan()
+func findClient(scanner *bufio.Scanner, clients []client.Client) error {
+	fmt.Print("Введите ID клиента или 0 для выхода: ")
 
 	fmt.Println("-------------------")
-	id := strings.TrimSpace(scanner.Text())
+	id, err := readInput(scanner)
+	if err != nil {
+		return fmt.Errorf("read client ID: %w", err)
+	}
+	if id == "0" {
+		return nil
+	}
 	client, isFound := client.FindByID(clients, id)
 	if !isFound {
 		fmt.Printf("клиент с ID %s не найден\n", id)
 		fmt.Println("-------------------")
-		return
+		return nil
 	}
 	printClient(client)
-
+	return nil
 }
 
-func changeClient(scanner *bufio.Scanner, clients []client.Client) {
-	fmt.Print("Введите ID клиента для изменения: ")
-	scanner.Scan()
-
-	fmt.Println("-------------------")
-	id := strings.TrimSpace(scanner.Text())
-	index, isFound := client.FindIndexByID(clients, id)
-	if !isFound {
-		fmt.Printf("клиент с ID %s не найден\n", id)
-		fmt.Println("-------------------")
-		return
-	}
+func changeClient(scanner *bufio.Scanner, clients []client.Client) error {
 	for {
-		fmt.Println()
-		fmt.Println("1 — Изменить имя")
-		fmt.Println("2 — Изменить номер")
-		fmt.Println("3 — Изменить соц. Сети")
-		fmt.Println("4 — Изменить статус совершеннолетнего")
-		fmt.Println("0 — Выход")
-		fmt.Print("Выберите действие: ")
+		fmt.Print("Введите ID клиента для изменения или 0 для выхода: ")
 
-		scanner.Scan()
-		infoToChange := strings.TrimSpace(strings.ToLower(scanner.Text()))
-		fmt.Println("-------------------")
-
-		switch infoToChange {
-		case "1":
-			for {
-				fmt.Println("Введите новое имя или 0 для отмены")
-				scanner.Scan()
-				newName := strings.TrimSpace(scanner.Text())
-				if newName == "0" {
-					break
-				}
-				if newName == "" {
-					fmt.Println("Имя не может быть пустым")
-					continue
-				}
-				clients[index].Name = newName
-				break
-			}
-		case "2":
-			for {
-				newPhone := ""
-				fmt.Print("Введите номер телефона: ")
-				scanner.Scan()
-				if newPhone = strings.TrimSpace(scanner.Text()); newPhone == "" {
-					fmt.Println("Номер телефона не может быть пустым")
-					continue
-				} else {
-					client, isFound := client.FindByPhone(clients, newPhone)
-					if !isFound || clients[index].ID == client.ID {
-						clients[index].Phone = newPhone
-						break
-					} else {
-						fmt.Printf("Номер %s принадлежит клиенту: %s, с ID: %s\n",
-							newPhone,
-							client.Name,
-							client.ID)
-					}
-				}
-			}
-		case "3":
-			fmt.Println("Введите новую соц. сеть")
-			scanner.Scan()
-			newSocial := strings.TrimSpace(scanner.Text())
-			clients[index].Social = newSocial
-		case "4":
-			for {
-				fmt.Print("Клиент совершеннолетний? Д/Н: ")
-				scanner.Scan()
-				newIsAdult := strings.ToLower(strings.TrimSpace(scanner.Text()))
-				if newIsAdult == "д" {
-					clients[index].IsAdult = true
-					break
-				}
-				if newIsAdult == "н" {
-					clients[index].IsAdult = false
-					break
-				}
-				fmt.Println("Некорректный ввод")
-			}
-		case "0":
-			printClient(clients[index])
-			return
-		default:
-			fmt.Println("Неизвестная команда")
+		id, err := readInput(scanner)
+		if err != nil {
+			return fmt.Errorf("read client ID: %w", err)
 		}
-	}
-
-}
-
-func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client, appointments []appointment.Appointment) []client.Client {
-	for {
-		fmt.Println("Для выхода - 0")
-		fmt.Print("Введите ID клиента для удаления: ")
-		scanner.Scan()
-		if strings.TrimSpace(scanner.Text()) == "0" {
-			return clients
+		if id == "0" {
+			return nil
 		}
-		fmt.Println("-------------------")
-		id := strings.TrimSpace(scanner.Text())
+
 		index, isFound := client.FindIndexByID(clients, id)
 		if !isFound {
 			fmt.Printf("клиент с ID %s не найден\n", id)
-			fmt.Println("-------------------")
+			continue
+		}
+		for {
+			fmt.Println()
+			fmt.Println("1 — Изменить имя")
+			fmt.Println("2 — Изменить номер")
+			fmt.Println("3 — Изменить соц. Сети")
+			fmt.Println("4 — Изменить статус совершеннолетнего")
+			fmt.Println("0 — Выход")
+			fmt.Print("Выберите действие: ")
+
+			infoToChange, err := readInput(scanner)
+			if err != nil {
+				return fmt.Errorf("read infotochange: %w", err)
+			}
+
+			switch infoToChange {
+			case "1":
+				for {
+					fmt.Println("Введите новое имя или 0 для возврата")
+					newName, err := readInput(scanner)
+					if err != nil {
+						return fmt.Errorf("read name: %w", err)
+					}
+					if newName == "0" {
+						break
+					}
+					err = client.ChangeName(clients, id, newName)
+
+					switch {
+					case errors.Is(err, client.ErrNameRequired):
+						fmt.Println("Имя не может быть пустым")
+						continue
+
+					case errors.Is(err, client.ErrClientNotFound):
+						fmt.Println("Клиент не найден")
+						return nil
+
+					case err != nil:
+						return fmt.Errorf("change client name: %w", err)
+					}
+
+					break
+				}
+			case "2":
+				for {
+					fmt.Print("Введите номер телефона или 0 для возврата: ")
+					newPhone, err := readInput(scanner)
+					if err != nil {
+						return fmt.Errorf("read phone: %w", err)
+					}
+					if newPhone == "0" {
+						break
+					}
+					err = client.ChangePhone(clients, id, newPhone)
+
+					switch {
+					case errors.Is(err, client.ErrPhoneRequired):
+						fmt.Println("Номер телефона не может быть пустым")
+						continue
+
+					case errors.Is(err, client.ErrClientNotFound):
+						fmt.Println("Клиент не найден")
+						return nil
+
+					case errors.Is(err, client.ErrPhoneAlreadyExists):
+						fmt.Println("Номер телефона занят другим пользователем")
+						continue
+
+					case err != nil:
+						return fmt.Errorf("change client phone: %w", err)
+					}
+
+					break
+				}
+			case "3":
+				fmt.Println("Введите новую соц. сеть или 0 для возврата")
+				newSocial, err := readInput(scanner)
+				if err != nil {
+					return fmt.Errorf("read social: %w", err)
+				}
+				if newSocial == "0" {
+					break
+				}
+				err = client.ChangeSocial(clients, id, newSocial)
+				if err != nil {
+					if errors.Is(err, client.ErrClientNotFound) {
+						fmt.Println("Клиент не найден")
+						return nil
+					}
+
+					return fmt.Errorf("change client social: %w", err)
+				}
+			case "4":
+				for {
+					fmt.Print("Клиент совершеннолетний? Д/Н или 0 для возврата: ")
+
+					newIsAdult, err := readInput(scanner)
+					if err != nil {
+						return fmt.Errorf("read client adult status: %w", err)
+					}
+
+					if newIsAdult == "0" {
+						break
+					}
+
+					newIsAdult = strings.ToLower(newIsAdult)
+
+					var isAdult bool
+
+					switch newIsAdult {
+					case "д":
+						isAdult = true
+
+					case "н":
+						isAdult = false
+
+					default:
+						fmt.Println("Некорректный ввод")
+						continue
+					}
+
+					err = client.ChangeAdultStatus(clients, id, isAdult)
+					if err != nil {
+						if errors.Is(err, client.ErrClientNotFound) {
+							fmt.Println("Клиент не найден")
+							break
+						}
+
+						return fmt.Errorf("change client adult status: %w", err)
+					}
+
+					break
+				}
+			case "0":
+				printClient(clients[index])
+				return nil
+			default:
+				fmt.Println("Неизвестная команда")
+			}
+		}
+	}
+
+}
+
+func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client, appointments []appointment.Appointment) ([]client.Client, error) {
+	for {
+		fmt.Print("Введите ID клиента для удаления или 0 для выхода: ")
+		id, err := readInput(scanner)
+		if err != nil {
+			return clients, fmt.Errorf("read client ID: %w", err)
+		}
+		if id == "0" {
+			return clients, nil
+		}
+		index, isFound := client.FindIndexByID(clients, id)
+		if !isFound {
+			fmt.Printf("клиент с ID %s не найден\n", id)
 			continue
 		}
 		printClient(clients[index])
@@ -235,23 +307,46 @@ func deleteClientChoice(scanner *bufio.Scanner, clients []client.Client, appoint
 			fmt.Println("0 — Выход")
 			fmt.Print("Выберите действие: ")
 
-			scanner.Scan()
-			deleteChoice := strings.TrimSpace(strings.ToLower(scanner.Text()))
-			fmt.Println("-------------------")
+			deleteChoice, err := readInput(scanner)
+			if err != nil {
+				return clients, fmt.Errorf("read delete choice : %w", err)
+			}
 
 			switch deleteChoice {
 			case "1":
 				fmt.Println("Вы уверены?")
 				fmt.Println("1 — Да")
 				fmt.Println("0 — Нет")
-				scanner.Scan()
-				if strings.TrimSpace(scanner.Text()) == "1" {
-					clients = slices.Delete(clients, index, index+1)
+
+				confirmation, err := readInput(scanner)
+				if err != nil {
+					return clients, fmt.Errorf("read delete confirmation: %w", err)
+				}
+
+				switch confirmation {
+				case "1":
+					afterDelete, err := client.Delete(clients, id)
+					if err != nil {
+						if errors.Is(err, client.ErrClientNotFound) {
+							fmt.Println("Клиент не найден")
+							return clients, nil
+						}
+
+						return clients, fmt.Errorf("delete client: %w", err)
+					}
+
 					fmt.Println("Клиент удалён")
-					return clients
+					return afterDelete, nil
+
+				case "0":
+					fmt.Println("Удаление отменено")
+					continue
+
+				default:
+					fmt.Println("Неизвестная команда")
 				}
 			case "0":
-				return clients
+				return clients, nil
 			default:
 				fmt.Println("Неизвестная команда")
 			}

@@ -92,15 +92,12 @@ func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointment
 		case errors.Is(err, appointment.ErrStartTimeInPast):
 			fmt.Println("Запись не может быть создана в прошлом")
 			continue
-
 		case errors.Is(err, appointment.ErrTimeTaken):
 			fmt.Println("Время уже занято")
 			continue
-
 		case errors.Is(err, appointment.ErrPlannedPriceLessThanZero):
 			fmt.Println("Цена не может быть меньше 0")
 			continue
-
 		case errors.Is(err, appointment.ErrDepositLessThanZero):
 			fmt.Println("Депозит не может быть меньше 0")
 			continue
