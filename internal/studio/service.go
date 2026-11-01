@@ -17,3 +17,12 @@ func DeleteClient(clients []client.Client, appointments []appointment.Appointmen
 
 	return client.Delete(clients, clientID)
 }
+
+func CreateAppointment(clients []client.Client, appointments []appointment.Appointment, input appointment.CreateInput) (appointment.Appointment, error) {
+	_, found := client.FindByID(clients, input.ClientID)
+	if !found {
+		return appointment.Appointment{}, client.ErrClientNotFound
+	}
+
+	return appointment.Create(appointments, input)
+}

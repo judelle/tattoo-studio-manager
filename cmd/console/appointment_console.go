@@ -8,6 +8,7 @@ import (
 	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
 	"tattoo-studio/internal/datetime"
+	"tattoo-studio/internal/studio"
 	"time"
 )
 
@@ -85,7 +86,7 @@ func addAppointment(scanner *bufio.Scanner, clients []client.Client, appointment
 			Deposit:      deposit,
 		}
 
-		createdAppointment, err := appointment.Create(appointments, input)
+		createdAppointment, err := studio.CreateAppointment(clients, appointments, input)
 
 		switch {
 		case errors.Is(err, appointment.ErrStartTimeInPast):
