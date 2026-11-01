@@ -10,3 +10,13 @@ type Snapshot struct {
 	Clients      []client.Client           `json:"clients"`
 	Appointments []appointment.Appointment `json:"appointments"`
 }
+
+const CurrentVersion = 1
+
+func NewSnapshot() Snapshot {
+	return Snapshot{
+		Version:      CurrentVersion,
+		Clients:      []client.Client{},
+		Appointments: []appointment.Appointment{},
+	}
+}

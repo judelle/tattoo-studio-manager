@@ -5,14 +5,34 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"tattoo-studio/internal/appointment"
 	"tattoo-studio/internal/client"
+	"tattoo-studio/internal/storage"
 )
 
+const dataPath = "data.json"
+
+func saveState(clients []client.Client, appointments []appointment.Appointment) error {
+	savedSnapshot := storage.Snapshot{
+		Version:      storage.CurrentVersion,
+		Appointments: appointments,
+		Clients:      clients,
+	}
+	if err := storage.Save(dataPath, savedSnapshot); err != nil {
+		return fmt.Errorf("save state: %w", err)
+	}
+	return nil
+}
+
 func main() {
-	clients := make([]client.Client, 0)
-	appointments := make([]appointment.Appointment, 0)
+	snapshot, err := storage.Load(dataPath)
+	if err != nil {
+		log.Fatalf("storage.Load error: %v", err)
+	}
+	clients := snapshot.Clients
+	appointments := snapshot.Appointments
 	scanner := bufio.NewScanner(os.Stdin)
 
 	for {
@@ -59,6 +79,10 @@ func main() {
 				continue
 			}
 			clients = append(clients, newClient)
+			if err := saveState(clients, appointments); err != nil {
+				fmt.Println("saveState error:", err)
+				return
+			}
 		case "2":
 			printClients(clients)
 		case "3":
@@ -83,6 +107,10 @@ func main() {
 				fmt.Println("changeClient error:", err)
 				return
 			}
+			if err := saveState(clients, appointments); err != nil {
+				fmt.Println("saveState error:", err)
+				return
+			}
 		case "5":
 			clients, err = deleteClientChoice(scanner, clients, appointments)
 			if err != nil {
@@ -92,6 +120,10 @@ func main() {
 				}
 
 				fmt.Println("deleteClientChoice error:", err)
+				return
+			}
+			if err := saveState(clients, appointments); err != nil {
+				fmt.Println("saveState error:", err)
 				return
 			}
 		case "6":
@@ -109,6 +141,10 @@ func main() {
 				continue
 			}
 			appointments = append(appointments, newAppointment)
+			if err := saveState(clients, appointments); err != nil {
+				fmt.Println("addappointment error:", err)
+				return
+			}
 			fmt.Println("Запись успешно добавлена")
 		case "7":
 			err := printAppointmentByDate(scanner, appointments, clients)
@@ -130,6 +166,10 @@ func main() {
 				fmt.Println("reschedulingAppointment error:", err)
 				return
 			}
+			if err := saveState(clients, appointments); err != nil {
+				fmt.Println("saveState error:", err)
+				return
+			}
 		case "9":
 			err := completeAppointment(scanner, appointments)
 			if err != nil {
@@ -138,6 +178,10 @@ func main() {
 					return
 				}
 				fmt.Println("completeAppointment error:", err)
+				return
+			}
+			if err := saveState(clients, appointments); err != nil {
+				fmt.Println("saveState error:", err)
 				return
 			}
 		case "10":
@@ -150,6 +194,10 @@ func main() {
 				fmt.Println("cancelAppointment error:", err)
 				return
 			}
+			if err := saveState(clients, appointments); err != nil {
+				fmt.Println("saveState error:", err)
+				return
+			}
 		case "11":
 			appointments, err = deleteAppointmentChoice(scanner, appointments, clients)
 			if err != nil {
@@ -160,6 +208,10 @@ func main() {
 				fmt.Println("deleteAppointmentChoice error:", err)
 				return
 			}
+			if err := saveState(clients, appointments); err != nil {
+				fmt.Println("saveState error:", err)
+				return
+			}
 		case "12":
 			err := printClientHistory(scanner, appointments, clients)
 			if err != nil {
@@ -167,7 +219,7 @@ func main() {
 					fmt.Println("Ввод завершён")
 					return
 				}
-				fmt.Println("printClientHistory error:", err)
+				fmt.Println("saveState error:", err)
 				return
 			}
 		case "13":

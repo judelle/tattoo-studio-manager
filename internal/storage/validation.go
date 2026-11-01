@@ -2,10 +2,11 @@ package storage
 
 import (
 	"tattoo-studio/internal/appointment"
+	"time"
 )
 
 func Validate(snapshot Snapshot) error {
-	if snapshot.Version != 1 {
+	if snapshot.Version != CurrentVersion {
 		return ErrUnsupportedVersion
 	}
 
@@ -39,7 +40,7 @@ func Validate(snapshot Snapshot) error {
 	}
 
 	seenAppointmentIDs := make(map[string]struct{})
-	plannedTimes := make(map[int64]struct{})
+	plannedTimes := make(map[time.Time]struct{})
 
 	for _, currentAppointment := range snapshot.Appointments {
 		if currentAppointment.ID == "" {
@@ -82,7 +83,7 @@ func Validate(snapshot Snapshot) error {
 		}
 
 		if currentAppointment.Status == appointment.StatusPlanned {
-			timeKey := currentAppointment.StartAt.UnixNano()
+			timeKey := currentAppointment.StartAt.UTC()
 
 			if _, exists := plannedTimes[timeKey]; exists {
 				return ErrDuplicatePlannedAppointmentTime

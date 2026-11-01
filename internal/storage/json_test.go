@@ -162,32 +162,29 @@ func TestSaveCreatesFile(t *testing.T) {
 }
 
 func TestLoadNonExistingFile(t *testing.T) {
-	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "does-not-exist.json")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "missing.json")
 
-	snapshot, err := Load(path)
+	got, err := Load(path)
 	if err != nil {
-		t.Fatalf("Load() unexpected error: %v", err)
+		t.Fatalf("Load() error = %v", err)
 	}
 
-	if snapshot.Version != 0 {
-		t.Errorf(
-			"Version = %d, want 0",
-			snapshot.Version,
-		)
+	want := NewSnapshot()
+
+	if got.Version != want.Version {
+		t.Errorf("Version = %d, want %d", got.Version, want.Version)
 	}
 
-	if snapshot.Clients != nil {
-		t.Errorf(
-			"Clients = %#v, want nil",
-			snapshot.Clients,
-		)
+	if len(got.Clients) != len(want.Clients) {
+		t.Errorf("Clients len = %d, want %d", len(got.Clients), len(want.Clients))
 	}
 
-	if snapshot.Appointments != nil {
+	if len(got.Appointments) != len(want.Appointments) {
 		t.Errorf(
-			"Appointments = %#v, want nil",
-			snapshot.Appointments,
+			"Appointments len = %d, want %d",
+			len(got.Appointments),
+			len(want.Appointments),
 		)
 	}
 }
